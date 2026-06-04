@@ -1,0 +1,8 @@
+## 🛠️ Tecnologías Utilizadas
+
+Para cumplir con los requerimientos de desarrollo ágil, interactividad paso a paso y visualización matemática sin añadir complejidad innecesaria a la arquitectura del software, se seleccionó el siguiente ecosistema tecnológico basado en **Python**:
+
+* **[Streamlit](https://streamlit.io/) (v1.x):** Framework principal utilizado para la creación de la interfaz de usuario (UI) y la lógica de la aplicación web. Permite renderizar componentes interactivos (botones de navegación, entradas de texto y tablas de datos) directamente desde el código de backend en Python, eliminando la necesidad de configurar servidores externos, HTML, CSS o JavaScript avanzado.
+* **[SymPy](https://www.sympy.org/) (v1.x):** Librería de matemáticas simbólicas utilizada para el procesamiento y análisis de las funciones ingresadas por el usuario como texto plano. Automatiza de manera exacta el cálculo de las derivadas analíticas necesarias para el funcionamiento del método de Newton-Raphson mediante funciones algebraicas nativas.
+* **[Matplotlib](https://matplotlib.org/) (v3.x):** Motor de renderizado gráfico encargado de dibujar dinámicamente las curvas de las funciones $f(x)$, las líneas tangentes de Newton-Raphson, los subintervalos generados por el método de Bisección y los puntos exactos de aproximación en cada paso de la simulación.
+* **[NumPy](https://numpy.org/) (v1.x):** Utilizado para el soporte analítico de vectores y la evaluación matemática optimizada de grandes conjuntos de datos numéricos necesarios para suavizar las líneas de los gráficos en los intervalos definidos.
