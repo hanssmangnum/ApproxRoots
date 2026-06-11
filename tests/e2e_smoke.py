@@ -1,4 +1,4 @@
-"""Prueba de humo de integración rápida de extremo a extremo para la separación de bisección.
+"""Prueba de humo de integración rápida de extremo a extremo para la arquitectura separada de la aplicación.
 
 Se ejecuta bajo pytest (descubierta mediante el patrón e2e_*.py) o directamente::
 
