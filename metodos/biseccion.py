@@ -1,12 +1,19 @@
 # metodos/biseccion.py
 
-import numpy as np
-from utils.func_parser import validar_evaluacion
+"""Legacy compatibility wrapper around the new domain solver.
+
+Returns the old ``(iters, raiz, convergio)`` tuple of plain dicts so that
+Comparación mode and Newton-Raphson continue to work unchanged.
+"""
+
+from domain.models.bisection import SolverConfig
+from domain.solvers.bisection import solve_bisection
 
 
 def biseccion(f, a: float, b: float, tol: float = 1e-6, max_iter: int = 100):
     """
-    Método de bisección para aproximación de raíces.
+    Legacy wrapper — delegates to the pure domain solver and converts
+    the typed result back to ``(list[dict], root, converged)``.
 
     Parámetros:
         f        : función evaluable (resultado de lambdify)
@@ -18,52 +25,33 @@ def biseccion(f, a: float, b: float, tol: float = 1e-6, max_iter: int = 100):
         iteraciones : lista de dicts con el estado de cada paso
         raiz        : aproximación final de la raíz
         convergio   : bool indicando si se cumplió la tolerancia
+
+    Raises:
+        ValueError : si el intervalo no cambia de signo o el evaluador
+                     produce valores no finitos.
     """
+    config = SolverConfig(a=a, b=b, tolerance=tol, max_iterations=max_iter)
+    result = solve_bisection(f, config)
 
-    fa = validar_evaluacion(f, a, "a")
-    fb = validar_evaluacion(f, b, "b")
+    if result.status == "invalid_bracket":
+        raise ValueError(result.error_message or "El intervalo no cambia de signo.")
+    if result.status == "non_finite":
+        raise ValueError(result.error_message or "La función produjo valores no finitos.")
+    if result.status == "parse_error":
+        raise ValueError(result.error_message or "Error de compilación de la expresión.")
 
-    if fa * fb >= 0:
-        raise ValueError(
-            f"f(a) y f(b) deben tener signos opuestos.\n"
-            f"f({a}) = {fa:.6f},  f({b}) = {fb:.6f}"
-        )
+    # Convert typed iterations to legacy dicts
+    iters = [
+        {
+            "iteracion": it.iteration,
+            "a"        : it.a,
+            "b"        : it.b,
+            "xm"       : it.midpoint,
+            "f(xm)"    : it.f_midpoint,
+            "error_abs": it.error_abs,
+            "error_rel": it.error_rel,
+        }
+        for it in result.iterations
+    ]
 
-    iteraciones = []
-    xm_anterior = None
-    convergio   = False
-
-    for i in range(1, max_iter + 1):
-        xm  = (a + b) / 2
-        fxm = validar_evaluacion(f, xm, "xm")
-
-        if xm_anterior is None:
-            error_abs = abs(b - a) / 2
-            error_rel = float("inf")
-        else:
-            error_abs = abs(xm - xm_anterior)
-            error_rel = error_abs / abs(xm) if xm != 0 else float("inf")
-
-        iteraciones.append({
-            "iteracion"  : i,
-            "a"          : a,
-            "b"          : b,
-            "xm"         : xm,
-            "f(xm)"      : fxm,
-            "error_abs"  : error_abs,
-            "error_rel"  : error_rel,
-        })
-
-        if error_abs <= tol or abs(fxm) <= tol:
-            convergio = True
-            break
-
-        fa = validar_evaluacion(f, a, "a")
-        if fa * fxm < 0:
-            b = xm
-        else:
-            a = xm
-
-        xm_anterior = xm
-
-    return iteraciones, xm, convergio
+    return iters, result.root, result.converged

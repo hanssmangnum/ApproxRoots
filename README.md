@@ -1,5 +1,12 @@
 # ApproxRoots
 Proyecto de aproximación de raíces 
+
+## 📚 Documentación
+
+- [Resumen de la separación de bisección](docs/biseccion-separacion-resumen.md)
+- [Arquitectura de bisección explicada de forma simple](docs/arquitectura-biseccion.md)
+- [Mapa de arquitectura — archivo por archivo](docs/mapa-arquitectura-biseccion.md)
+
 ## 🎨 Paleta de Colores y Guía de Interfaz (UI)
 
 Para garantizar una experiencia visual clara, interactiva y de alto contraste en el modo oscuro del visualizador, se definió la siguiente estructura y jerarquía de colores:

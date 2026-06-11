@@ -7,9 +7,13 @@ from matplotlib.lines import Line2D
 import numpy as np
 import sympy as sp
 
-from utils.func_parser import parsear_funcion
+from utils.func_parser import parsear_funcion, compile_expression
 from metodos.biseccion import biseccion
 from metodos.newton import newton_raphson
+from domain.models.bisection import BisectionRequest
+from domain.solvers.bisection import solve_bisection
+from application.use_cases.run_bisection import run_bisection
+from ui.presenters.bisection_presenter import present_bisection_result
 from utils.graficas import (
     graficar_funcion,
     graficar_iteracion_biseccion,
@@ -285,22 +289,46 @@ error_msg = None
 
 if ejecutar:
     try:
-        f, df, expr, d_expr = parsear_funcion(st.session_state["fn_texto"])
-        st.session_state["f"]    = f
-        st.session_state["df"]   = df
-        st.session_state["expr"] = expr
-
         if metodo == "Bisección":
-            iters, raiz, convergio = biseccion(f, bis_a, bis_b, tol=tol, max_iter=max_iter)
-            st.session_state["iteraciones"]   = iters
-            st.session_state["raiz"]          = raiz
-            st.session_state["convergio"]     = convergio
-            st.session_state["metodo_activo"] = "Bisección"
-            st.session_state["iter_actual"]   = 0
-            st.session_state["ejecutado"]     = True
-            guardar_historial(st.session_state["fn_texto"], "Bisección", raiz, len(iters))
+            request = BisectionRequest(
+                expression=st.session_state["fn_texto"],
+                a=bis_a,
+                b=bis_b,
+                tolerance=tol,
+                max_iterations=int(max_iter),
+            )
+            result = run_bisection(
+                request,
+                compile_fn=compile_expression,
+                solve_fn=solve_bisection,
+            )
+            presenter_data = present_bisection_result(result)
+
+            if result.status == "success":
+                evaluator = compile_expression(st.session_state["fn_texto"])
+                st.session_state["f"]    = evaluator
+                st.session_state["df"]   = None
+                st.session_state["expr"] = sp.sympify(st.session_state["fn_texto"])
+                st.session_state["iteraciones"]   = presenter_data["session"]["iteraciones"]
+                st.session_state["raiz"]          = result.root
+                st.session_state["convergio"]     = result.converged
+                st.session_state["metodo_activo"] = "Bisección"
+                st.session_state["iter_actual"]   = 0
+                st.session_state["ejecutado"]     = True
+                guardar_historial(
+                    st.session_state["fn_texto"],
+                    "Bisección",
+                    result.root,
+                    len(result.iterations),
+                )
+            else:
+                error_msg = result.error_message or "Bisección falló."
 
         elif metodo == "Newton-Raphson":
+            f, df, expr, d_expr = parsear_funcion(st.session_state["fn_texto"])
+            st.session_state["f"]    = f
+            st.session_state["df"]   = df
+            st.session_state["expr"] = expr
             iters, raiz, convergio = newton_raphson(f, df, nwt_x0, tol=tol, max_iter=max_iter)
             st.session_state["iteraciones"]   = iters
             st.session_state["raiz"]          = raiz
@@ -311,6 +339,10 @@ if ejecutar:
             guardar_historial(st.session_state["fn_texto"], "Newton-Raphson", raiz, len(iters))
 
         elif metodo == "Comparación":
+            f, df, expr, d_expr = parsear_funcion(st.session_state["fn_texto"])
+            st.session_state["f"]    = f
+            st.session_state["df"]   = df
+            st.session_state["expr"] = expr
             iters_bis, raiz_bis, conv_bis = biseccion(f, bis_a, bis_b, tol=tol, max_iter=max_iter)
             iters_nwt, raiz_nwt, conv_nwt = newton_raphson(f, df, nwt_x0, tol=tol, max_iter=max_iter)
             st.session_state["iters_bis"]     = iters_bis
@@ -441,6 +473,30 @@ convergio     = st.session_state["convergio"]
 expr          = st.session_state["expr"]
 
 n_iters = len(iteraciones)
+
+# ── Zero-iteration success guard ────────────────────
+# Root was found at a boundary (f(a)=0 or f(b)=0); no iterations recorded.
+if n_iters == 0 and convergio:
+    badge = '<span class="badge-ok">✔ Convergió</span>'
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.markdown(f"""<div class="metric-card"><div class="label">Raíz aproximada</div>
+        <div class="value">{fmt(raiz, 7)}</div></div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="metric-card"><div class="label">f(raíz)</div>
+        <div class="value">{fmt(float(f(raiz)), 4)}</div></div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="metric-card"><div class="label">Total iteraciones</div>
+        <div class="value">0</div></div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""<div class="metric-card"><div class="label">Error final</div>
+        <div class="value">0</div></div>""", unsafe_allow_html=True)
+    with c5:
+        st.markdown(f"""<div class="metric-card"><div class="label">Estado</div>
+        <div class="value" style="font-size:1rem;margin-top:6px">{badge}</div></div>""",
+        unsafe_allow_html=True)
+    st.success("La raíz exacta se encuentra en el límite del intervalo. No se requirieron iteraciones.")
+    st.stop()
 
 # ── Métricas superiores ───────────────────────
 
