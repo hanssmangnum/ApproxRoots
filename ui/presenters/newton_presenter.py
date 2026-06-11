@@ -1,14 +1,14 @@
-# ui/presenters/bisection_presenter.py
+# ui/presenters/newton_presenter.py
 
-"""Presenter / adaptador — convierte el BisectionResult del dominio a formas aptas para la UI."""
+"""Presenter / adaptador — convierte el NewtonResult del dominio a formas aptas para la UI."""
 
 import math
 
-from domain.models.bisection import BisectionResult, BisectionIteration
+from domain.models.newton import NewtonResult
 
 
 def _fmt(v: float, decimales: int = 8) -> str:
-    """Formateo mínimo que aproxima el ``fmt`` de app.py sin numpy."""
+    """Formateo mínimo que aproxima el formateo de app.py sin numpy."""
     if not math.isfinite(v):
         return "\u221e"  # ∞
     if abs(v) < 1e-4 or abs(v) > 1e6:
@@ -17,15 +17,16 @@ def _fmt(v: float, decimales: int = 8) -> str:
     return txt if txt else "0"
 
 
-def present_bisection_result(
-    result: BisectionResult,
+def present_newton_result(
+    result: NewtonResult,
 ) -> dict:
-    """Convierte un *BisectionResult* del dominio en datos compatibles con Streamlit.
+    """Convierte un *NewtonResult* del dominio en datos compatibles con Streamlit.
 
     Retorna un dict con las claves:
-      - ``iterations`` – lista de dicts que coincide con el formato legacy de ``metodos/biseccion.py``
-        (``iteracion``, ``a``, ``b``, ``xm``, ``f(xm)``, ``error_abs``, ``error_rel``).
-      - ``metrics`` – dict con ``root``, ``f_root``, ``iterations_count``, ``final_error``.
+      - ``iterations`` – lista de dicts que coincide con el formato legacy de ``metodos/newton.py``
+        (``iteracion``, ``x_anterior``, ``x_nuevo``, ``f(x)``, ``f'(x)``,
+         ``error_abs``, ``error_rel``, ``tangente``).
+      - ``metrics`` – dict con ``root``, ``iterations_count``, ``final_error``, ``converged``.
       - ``session`` – dict que puede volcarse en ``st.session_state``
         (``iteraciones``, ``raiz``, ``convergio``).
     """
@@ -34,12 +35,17 @@ def present_bisection_result(
     for it in result.iterations:
         iter_rows.append({
             "iteracion": it.iteration,
-            "a": it.a,
-            "b": it.b,
-            "xm": it.midpoint,
-            "f(xm)": it.f_midpoint,
+            "x_anterior": it.x_previous,
+            "x_nuevo": it.x_next,
+            "f(x)": it.f_x,
+            "f'(x)": it.df_x,
             "error_abs": it.error_abs,
             "error_rel": it.error_rel,
+            "tangente": {
+                "pendiente": it.tangent_slope,
+                "intercepto": it.tangent_intercept,
+                "x_tangente": it.x_previous,
+            },
         })
 
     # Métricas para la barra superior

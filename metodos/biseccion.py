@@ -1,9 +1,9 @@
 # metodos/biseccion.py
 
-"""Legacy compatibility wrapper around the new domain solver.
+"""Wrapper legacy de compatibilidad alrededor del solver de dominio nuevo.
 
-Returns the old ``(iters, raiz, convergio)`` tuple of plain dicts so that
-Comparación mode and Newton-Raphson continue to work unchanged.
+Retorna la tupla antigua ``(iters, raiz, convergio)`` de dicts planos para que
+el modo Comparación y Newton-Raphson sigan funcionando sin cambios.
 """
 
 from domain.models.bisection import SolverConfig
@@ -12,8 +12,8 @@ from domain.solvers.bisection import solve_bisection
 
 def biseccion(f, a: float, b: float, tol: float = 1e-6, max_iter: int = 100):
     """
-    Legacy wrapper — delegates to the pure domain solver and converts
-    the typed result back to ``(list[dict], root, converged)``.
+    Wrapper legacy — delega en el solver de dominio puro y convierte
+    el resultado tipificado de vuelta a ``(list[dict], root, converged)``.
 
     Parámetros:
         f        : función evaluable (resultado de lambdify)
@@ -40,7 +40,7 @@ def biseccion(f, a: float, b: float, tol: float = 1e-6, max_iter: int = 100):
     if result.status == "parse_error":
         raise ValueError(result.error_message or "Error de compilación de la expresión.")
 
-    # Convert typed iterations to legacy dicts
+    # Convertir iteraciones tipificadas a dicts legacy
     iters = [
         {
             "iteracion": it.iteration,

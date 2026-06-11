@@ -7,13 +7,15 @@ from matplotlib.lines import Line2D
 import numpy as np
 import sympy as sp
 
-from utils.func_parser import parsear_funcion, compile_expression
-from metodos.biseccion import biseccion
-from metodos.newton import newton_raphson
+from utils.func_parser import compile_expression, compile_with_derivative
 from domain.models.bisection import BisectionRequest
+from domain.models.newton import NewtonRequest
 from domain.solvers.bisection import solve_bisection
+from domain.solvers.newton import solve_newton
 from application.use_cases.run_bisection import run_bisection
+from application.use_cases.run_newton import run_newton
 from ui.presenters.bisection_presenter import present_bisection_result
+from ui.presenters.newton_presenter import present_newton_result
 from utils.graficas import (
     graficar_funcion,
     graficar_iteracion_biseccion,
@@ -121,7 +123,7 @@ st.markdown("""
     /* Tabla */
     .stDataFrame { border-radius: 8px; overflow: hidden; }
 
-    /* Sidebar */
+    /* Barra lateral */
     section[data-testid="stSidebar"] {
         background: #f8fafc;
     }
@@ -184,7 +186,7 @@ init_state()
 
 
 # ══════════════════════════════════════════════
-# Helpers
+# Funciones auxiliares
 # ══════════════════════════════════════════════
 
 def fmt(v, decimales=8):
@@ -210,8 +212,31 @@ def guardar_historial(fn_texto, metodo, raiz, iters):
             hist.pop(0)
 
 
+def _apply_newton_session(data: dict) -> None:
+    """Escribe el payload de sesión del presenter de Newton y las claves de renderizado en el estado de sesión."""
+    st.session_state.update(data["session"])  # iteraciones, raiz, convergio
+    st.session_state["metodo_activo"] = "Newton-Raphson"
+    st.session_state["iter_actual"]   = 0
+    st.session_state["ejecutado"]     = True
+
+
+def _apply_comparison_session(
+    bis_data: dict,
+    nwt_data: dict,
+) -> None:
+    """Escribe los datos del presenter de cada caso de uso en las claves de renderizado de comparación."""
+    st.session_state["iters_bis"] = bis_data["iterations"]
+    st.session_state["iters_nwt"] = nwt_data["iterations"]
+    st.session_state["raiz_bis"]  = bis_data["session"]["raiz"]
+    st.session_state["raiz_nwt"]  = nwt_data["session"]["raiz"]
+    st.session_state["conv_bis"]  = bis_data["session"]["convergio"]
+    st.session_state["conv_nwt"]  = nwt_data["session"]["convergio"]
+    st.session_state["metodo_activo"] = "Comparación"
+    st.session_state["ejecutado"]     = True
+
+
 # ══════════════════════════════════════════════
-# Sidebar
+# Barra lateral
 # ══════════════════════════════════════════════
 
 with st.sidebar:
@@ -325,34 +350,72 @@ if ejecutar:
                 error_msg = result.error_message or "Bisección falló."
 
         elif metodo == "Newton-Raphson":
-            f, df, expr, d_expr = parsear_funcion(st.session_state["fn_texto"])
-            st.session_state["f"]    = f
-            st.session_state["df"]   = df
-            st.session_state["expr"] = expr
-            iters, raiz, convergio = newton_raphson(f, df, nwt_x0, tol=tol, max_iter=max_iter)
-            st.session_state["iteraciones"]   = iters
-            st.session_state["raiz"]          = raiz
-            st.session_state["convergio"]     = convergio
-            st.session_state["metodo_activo"] = "Newton-Raphson"
-            st.session_state["iter_actual"]   = 0
-            st.session_state["ejecutado"]     = True
-            guardar_historial(st.session_state["fn_texto"], "Newton-Raphson", raiz, len(iters))
+            request = NewtonRequest(
+                expression=st.session_state["fn_texto"],
+                x0=nwt_x0,
+                tolerance=tol,
+                max_iterations=int(max_iter),
+            )
+            result = run_newton(
+                request,
+                compile_fn=compile_expression,
+                derive_fn=lambda expr: compile_with_derivative(expr)[1],
+                solve_fn=solve_newton,
+            )
+            presenter_data = present_newton_result(result)
+
+            if result.status == "success":
+                f, df = compile_with_derivative(st.session_state["fn_texto"])
+                st.session_state["f"]    = f
+                st.session_state["df"]   = df
+                st.session_state["expr"] = sp.sympify(st.session_state["fn_texto"])
+                _apply_newton_session(presenter_data)
+                guardar_historial(
+                    st.session_state["fn_texto"],
+                    "Newton-Raphson",
+                    result.root,
+                    len(result.iterations),
+                )
+            else:
+                error_msg = result.error_message or "Newton-Raphson falló."
 
         elif metodo == "Comparación":
-            f, df, expr, d_expr = parsear_funcion(st.session_state["fn_texto"])
-            st.session_state["f"]    = f
-            st.session_state["df"]   = df
-            st.session_state["expr"] = expr
-            iters_bis, raiz_bis, conv_bis = biseccion(f, bis_a, bis_b, tol=tol, max_iter=max_iter)
-            iters_nwt, raiz_nwt, conv_nwt = newton_raphson(f, df, nwt_x0, tol=tol, max_iter=max_iter)
-            st.session_state["iters_bis"]     = iters_bis
-            st.session_state["iters_nwt"]     = iters_nwt
-            st.session_state["raiz_bis"]      = raiz_bis
-            st.session_state["raiz_nwt"]      = raiz_nwt
-            st.session_state["conv_bis"]      = conv_bis
-            st.session_state["conv_nwt"]      = conv_nwt
-            st.session_state["metodo_activo"] = "Comparación"
-            st.session_state["ejecutado"]     = True
+            # Compilar una vez — ambos casos de uso comparten el mismo evaluador
+            f, df = compile_with_derivative(st.session_state["fn_texto"])
+            st.session_state["f"]  = f
+            st.session_state["df"] = df
+
+            # Ejecutar bisección a través de su caso de uso + presenter
+            bis_request = BisectionRequest(
+                expression=st.session_state["fn_texto"],
+                a=bis_a,
+                b=bis_b,
+                tolerance=tol,
+                max_iterations=int(max_iter),
+            )
+            bis_result = run_bisection(
+                bis_request,
+                compile_fn=compile_expression,
+                solve_fn=solve_bisection,
+            )
+            bis_data = present_bisection_result(bis_result)
+
+            # Ejecutar Newton a través de su caso de uso + presenter
+            nwt_request = NewtonRequest(
+                expression=st.session_state["fn_texto"],
+                x0=nwt_x0,
+                tolerance=tol,
+                max_iterations=int(max_iter),
+            )
+            nwt_result = run_newton(
+                nwt_request,
+                compile_fn=compile_expression,
+                derive_fn=lambda expr: compile_with_derivative(expr)[1],
+                solve_fn=solve_newton,
+            )
+            nwt_data = present_newton_result(nwt_result)
+
+            _apply_comparison_session(bis_data, nwt_data)
 
     except ValueError as e:
         error_msg = str(e)
@@ -361,7 +424,7 @@ if ejecutar:
 
 
 # ══════════════════════════════════════════════
-# Header
+# Encabezado
 # ══════════════════════════════════════════════
 
 st.markdown("""
@@ -475,7 +538,7 @@ expr          = st.session_state["expr"]
 n_iters = len(iteraciones)
 
 # ── Zero-iteration success guard ────────────────────
-# Root was found at a boundary (f(a)=0 or f(b)=0); no iterations recorded.
+# La raíz se encontró en un límite (f(a)=0 o f(b)=0); no se registraron iteraciones.
 if n_iters == 0 and convergio:
     badge = '<span class="badge-ok">✔ Convergió</span>'
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -528,7 +591,7 @@ with c5:
 
 st.markdown("")
 
-# ── Tabs principales ─────────────────────────
+# ── Pestañas principales ─────────────────────────
 
 tab_grafica, tab_tabla, tab_convergencia = st.tabs(
     ["📊 Gráfica iterativa", "📋 Tabla de iteraciones", "📈 Convergencia"]

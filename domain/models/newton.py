@@ -1,56 +1,56 @@
-# domain/models/bisection.py
+# domain/models/newton.py
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
 @dataclass(frozen=True)
-class BisectionRequest:
+class NewtonRequest:
     """Entrada cruda desde la UI antes del parsing."""
 
     expression: str
-    a: float
-    b: float
+    x0: float
     tolerance: float
     max_iterations: int
 
 
 @dataclass(frozen=True)
-class SolverConfig:
-    """Configuración solo numérica para el solver de bisección (sin expresión)."""
+class NewtonConfig:
+    """Configuración solo numérica para el solver de Newton (sin expresión)."""
 
-    a: float
-    b: float
+    x0: float
     tolerance: float
     max_iterations: int
 
 
 @dataclass(frozen=True)
-class BisectionIteration:
-    """Un paso individual del bucle numérico de bisección."""
+class NewtonIteration:
+    """Un paso individual del bucle numérico de Newton-Raphson."""
 
     iteration: int
-    a: float
-    b: float
-    midpoint: float
-    f_midpoint: float
+    x_previous: float
+    x_next: float
+    f_x: float
+    df_x: float
     error_abs: float
     error_rel: float
+    tangent_slope: float
+    tangent_intercept: float
 
 
 @dataclass(frozen=True)
-class BisectionResult:
-    """Resultado tipificado de una ejecución del solver de bisección.
+class NewtonResult:
+    """Resultado tipificado de una ejecución del solver de Newton-Raphson.
 
     ``status`` describe el estado final:
       - ``"success"`` — convergió dentro de la tolerancia
-      - ``"invalid_bracket"`` — f(a) y f(b) no encierran una raíz
+      - ``"derivative_zero"`` — la derivada llegó a casi cero (división por cero)
       - ``"non_finite"`` — el evaluador devolvió NaN o infinito
       - ``"max_iterations"`` — no convergió dentro del límite de iteraciones
       - ``"parse_error"`` — la expresión no pudo compilarse (asignado por el caso de uso)
     """
 
-    iterations: list[BisectionIteration]
+    iterations: list[NewtonIteration]
     root: Optional[float]
     converged: bool
     status: str

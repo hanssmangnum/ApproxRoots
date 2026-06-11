@@ -1,6 +1,6 @@
 # application/use_cases/run_bisection.py
 
-"""Bisection use case that coordinates parsing and solving."""
+"""Caso de uso de bisección que coordina el parsing y la resolución."""
 
 from typing import Callable
 
@@ -19,17 +19,17 @@ def run_bisection(
         BisectionResult,
     ],
 ) -> BisectionResult:
-    """Orchestrate a bisection execution.
+    """Orquesta una ejecución de bisección.
 
-    1. Compile the expression via *compile_fn*.
-    2. If compilation fails, return a ``parse_error`` result.
-    3. Build a ``SolverConfig`` from the request.
-    4. Solve via *solve_fn*.
-    5. Return the typed result.
+    1. Compila la expresión mediante *compile_fn*.
+    2. Si la compilación falla, retorna un resultado ``parse_error``.
+    3. Construye un ``SolverConfig`` a partir de la solicitud.
+    4. Resuelve mediante *solve_fn*.
+    5. Retorna el resultado tipificado.
 
-    The function/callable arguments make the use case testable with fakes.
+    Los argumentos de función/callable hacen que el caso de uso sea testeable con fakes.
     """
-    # Step 1 — parse
+    # Paso 1 — parse
     try:
         evaluator = compile_fn(request.expression)
     except ValueError as exc:
@@ -41,7 +41,7 @@ def run_bisection(
             error_message=str(exc),
         )
 
-    # Step 2 — solve
+    # Paso 2 — solve
     config = SolverConfig(
         a=request.a,
         b=request.b,

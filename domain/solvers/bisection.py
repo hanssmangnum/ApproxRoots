@@ -1,6 +1,6 @@
 # domain/solvers/bisection.py
 
-"""Pure bisection solver with no parser or UI-layer imports."""
+"""Solver de bisección puro, sin imports del parser ni de la capa de UI."""
 
 from typing import Callable
 import numpy as np
@@ -17,16 +17,16 @@ def _safe_evaluate(
     x: float,
     label: str,
 ) -> float:
-    """Evaluate *evaluator* at *x* and reject non-finite results."""
+    """Evalúa *evaluator* en *x* y rechaza resultados no finitos."""
     try:
         val = float(evaluator(x))
     except Exception:
         raise ValueError(
-            f"Evaluator raised an exception at {label} = {x}."
+            f"El evaluador lanzó una excepción en {label} = {x}."
         )
     if not np.isfinite(val):
         raise ValueError(
-            f"Evaluator returned non-finite value {val} at {label} = {x}."
+            f"El evaluador devolvió un valor no finito ({val}) en {label} = {x}."
         )
     return val
 
@@ -35,19 +35,19 @@ def solve_bisection(
     evaluator: Callable[[float], float],
     config: SolverConfig,
 ) -> BisectionResult:
-    """Run the bisection numerical method.
+    """Ejecuta el método numérico de bisección.
 
-    Parameters
+    Parámetros
     ----------
     evaluator :
-        A callable ``float -> float`` produced by an expression parser.
+        Un callable ``float -> float`` producido por un parser de expresiones.
     config :
-        Numeric interval and convergence settings.
+        Intervalo numérico y configuración de convergencia.
 
-    Returns
+    Retorna
     -------
     BisectionResult
-        Typed outcome with iteration records, root, and status.
+        Resultado tipificado con registros de iteración, raíz y estado.
     """
     # ── Validate bracket ──────────────────────────────────────────────
     try:
@@ -85,7 +85,7 @@ def solve_bisection(
             converged=False,
             status="invalid_bracket",
             error_message=(
-                f"f(a) and f(b) must have opposite signs.\n"
+                f"f(a) y f(b) deben tener signos opuestos.\n"
                 f"f({config.a}) = {fa:.6f},  f({config.b}) = {fb:.6f}"
             ),
         )
@@ -149,5 +149,5 @@ def solve_bisection(
         root=xm,
         converged=False,
         status="max_iterations",
-        error_message=f"Did not converge within {config.max_iterations} iterations.",
+        error_message=f"No convergió en {config.max_iterations} iteraciones.",
     )

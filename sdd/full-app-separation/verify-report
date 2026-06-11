@@ -1,0 +1,68 @@
+## Verification Report
+
+**Change**: full-app-separation
+**Version**: N/A
+**Mode**: Standard
+
+### Completeness
+| Metric | Value |
+|--------|-------|
+| Tasks total | N/A (no task artifact present in repo) |
+| Tasks complete | Inferred complete |
+| Tasks incomplete | 0 identified |
+
+### Build & Tests Execution
+**Build**: Not run (no build command defined for this project)
+```text
+N/A
+```
+
+**Tests**: ✅ 79 passed / ❌ 0 failed / ⚠️ 0 skipped
+```text
+pytest -q
+........................................................................ [ 91%]
+.......                                                                  [100%]
+79 passed in 2.94s
+
+python tests\e2e_smoke.py
+=== ALL E2E CHECKS PASSED ===
+```
+
+**Coverage**: Not available
+
+### Spec Compliance Matrix
+| Requirement | Scenario | Test | Result |
+|-------------|----------|------|--------|
+| Separation of concerns | Bisection flow is split into UI, use case, solver, presenter | `tests/test_use_case.py::TestRunBisection` + `tests/test_presenter.py::TestPresenterSuccess` + `tests/test_solver.py::test_convergent_interval_returns_iterations` | ✅ COMPLIANT |
+| Solver purity | Solver has no UI/parser imports | `tests/test_solver.py::test_solver_has_no_forbidden_imports` | ✅ COMPLIANT |
+| Parser isolation | Parser only compiles expressions; no interval logic | `tests/test_parser.py::TestCompileExpression` | ✅ COMPLIANT |
+| Newton separation | Newton flow uses dedicated request/config/solver/presenter layers | `tests/test_use_case.py::TestRunNewton` + `tests/test_presenter.py::TestNewtonPresenterSuccess` | ✅ COMPLIANT |
+| Comparison orchestration | Comparison composes bisection and Newton without collapsing layers | `tests/test_use_case.py::TestRunComparison` + `tests/e2e_smoke.py::test_e2e_comparison_smoke` | ✅ COMPLIANT |
+
+**Compliance summary**: 5/5 scenarios compliant
+
+### Correctness (Static Evidence)
+| Requirement | Status | Notes |
+|------------|--------|-------|
+| Domain models split | ✅ Implemented | Separate request/config/result/iteration models for bisection, Newton, and comparison. |
+| Use cases coordinate, not compute | ✅ Implemented | `run_bisection`, `run_newton`, and `run_comparison` orchestrate collaborators only. |
+| Presenters adapt domain output | ✅ Implemented | Presenter modules map domain results to legacy UI shapes. |
+| UI consumes separated layers | ✅ Implemented | `app.py` calls use cases and presenters instead of mixing solver logic into the UI. |
+| Legacy compatibility preserved | ✅ Implemented | Existing charts and legacy wrappers continue to work through adapted payloads. |
+
+### Coherence (Design)
+| Decision | Followed? | Notes |
+|----------|-----------|-------|
+| Domain layer stays free of Streamlit/parser imports | ✅ Yes | Verified by direct source inspection and solver tests. |
+| Use cases depend on injected compile/solve collaborators | ✅ Yes | Makes flows unit-testable with fakes. |
+| Presenters convert domain results to UI-friendly dicts | ✅ Yes | Keeps UI data shaping out of the solver. |
+| UI remains orchestration + rendering only | ✅ Yes | `app.py` coordinates requests, session state, and charts. |
+
+### Issues Found
+**CRITICAL**: None.
+**WARNING**: No explicit `sdd/full-app-separation/spec`, `tasks`, or `apply-progress` files were present in the repo, so alignment was inferred from docs, source, and tests rather than direct artifact reads.
+**SUGGESTION**: Add the SDD artifact set to the repository for future verifications.
+
+### Verdict
+PASS WITH WARNINGS
+Runtime evidence is strong (79 pytest passes plus direct e2e smoke success), and the architecture separation is implemented and covered; the only warning is missing explicit SDD source artifacts in-repo.

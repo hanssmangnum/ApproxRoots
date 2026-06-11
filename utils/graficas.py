@@ -19,7 +19,7 @@ COLOR_CERO      = "#888888"
  
 def _rango_seguro(f, x_min: float, x_max: float, n: int = 500):
     """
-    Genera arrays x, y filtrando valores no finitos o demasiado grandes.
+    Genera arreglos x, y filtrando valores no finitos o demasiado grandes.
     Retorna (xs, ys) listos para graficar.
     """
     xs = np.linspace(x_min, x_max, n)
@@ -34,7 +34,7 @@ def _rango_seguro(f, x_min: float, x_max: float, n: int = 500):
  
  
 def _estilo_base(ax, titulo: str = ""):
-    """Aplica estilo limpio y consistente a un Axes."""
+    """Aplica estilo limpio y consistente a un objeto Axes."""
     ax.axhline(0, color=COLOR_CERO, linewidth=0.8, linestyle="--", alpha=0.6)
     ax.axvline(0, color=COLOR_CERO, linewidth=0.8, linestyle="--", alpha=0.6)
     ax.grid(True, alpha=0.2, linewidth=0.5)
@@ -55,7 +55,7 @@ def graficar_funcion(f, x_min: float, x_max: float,
                      ax=None) -> plt.Figure:
     """
     Grafica la función en [x_min, x_max].
-    Si se provee raiz, la marca con un punto verde.
+    Si se provee raíz, la marca con un punto verde.
     """
     fig_creada = ax is None
     if fig_creada:
@@ -282,6 +282,62 @@ def graficar_comparacion(iters_bis: list, iters_nwt: list) -> plt.Figure:
     return fig
  
  
+# ══════════════════════════════════════════════
+# 1b–5b. Sobrecargas que aceptan View-Models
+# ══════════════════════════════════════════════
+#
+# Estas funciones aceptan view-models de gráficos estables en lugar de
+# callables crudos + dicts de iteración. El renderizado interno es idéntico
+# — el VM provee un wrapper tipificado que desacopla ``app.py`` de las
+# claves de diccionario ad-hoc.
+#
+# Las firmas legacy basadas en dicts se mantienen sin cambios para
+# compatibilidad hacia atrás.
+#
+# ══════════════════════════════════════════════
+
+
+def graficar_funcion_vm(vm: "FunctionChartVM") -> plt.Figure:
+    """Sobrecarga VM-aware — delega en ``graficar_funcion``."""
+    return graficar_funcion(
+        vm.function_callable,
+        vm.x_min,
+        vm.x_max,
+        titulo=vm.title,
+        raiz=vm.root,
+    )
+
+
+def graficar_iteracion_biseccion_vm(vm: "BisectionChartVM") -> plt.Figure:
+    """Sobrecarga VM-aware — delega en ``graficar_iteracion_biseccion``."""
+    return graficar_iteracion_biseccion(
+        vm.function_callable,
+        vm.iteration,
+        x_min=vm.a,
+        x_max=vm.b,
+    )
+
+
+def graficar_iteracion_newton_vm(vm: "NewtonChartVM") -> plt.Figure:
+    """Sobrecarga VM-aware — delega en ``graficar_iteracion_newton``."""
+    return graficar_iteracion_newton(
+        vm.function_callable,
+        vm.iteration,
+        x_min=vm.x_previous,
+        x_max=vm.x_next,
+    )
+
+
+def graficar_convergencia_vm(vm: "ConvergenceChartVM") -> plt.Figure:
+    """Sobrecarga VM-aware — construye la lista de iteraciones desde la serie del VM."""
+    # Reconstruct the iteration-dict format expected by the legacy function.
+    iteraciones = [
+        {"iteracion": entry["iteration"], "error_abs": entry["error_abs"]}
+        for entry in vm.series
+    ]
+    return graficar_convergencia(iteraciones, metodo=vm.title)
+
+
 # ══════════════════════════════════════════════
 # 6. Secuencia completa de iteraciones
 # ══════════════════════════════════════════════
