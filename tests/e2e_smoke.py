@@ -175,9 +175,101 @@ def test_e2e_comparison_one_missing() -> None:
     assert result.newton.iterations_count > 0  # al menos comenzó
 
 
+def test_e2e_comparison_partial_bisection_only() -> None:
+    """De extremo a extremo: sólo bisección converge; Newton falla por derivada cero.
+
+    f(x) = x² - 1 en [0.5, 3] con Newton en x₀=0:
+    - Bisección: f(0.5)=-0.75, f(3)=8 → signo opuesto → converge a 1.0
+    - Newton: f'(0)=0 → derivative_zero → falla inmediatamente
+    """
+    request = ComparisonRequest(
+        expression="x**2 - 1",
+        bisection_a=0.5, bisection_b=3.0,
+        newton_x0=0.0,
+        tolerance=1e-6, max_iterations=100,
+    )
+    result = run_comparison(
+        request,
+        compile_fn=compile_expression,
+        derive_fn=lambda expr: compile_with_derivative(expr)[1],
+        run_bisection_fn=run_bisection,
+        run_newton_fn=run_newton,
+        bisection_solve_fn=solve_bisection,
+        newton_solve_fn=solve_newton,
+    )
+
+    # Bisección converge a 1.0
+    assert result.bisection.converged is True
+    assert result.bisection.root is not None
+    assert abs(result.bisection.root - 1.0) < 1e-4
+    assert result.bisection.iterations_count > 0
+    assert result.bisection.error_message is None
+
+    # Newton falla por derivada cero
+    assert result.newton.converged is False
+    assert result.newton.root is None
+    assert result.newton.iterations_count == 0
+    assert "derivada" in (result.newton.error_message or "").lower()
+
+    # Presenter: ambas métricas existen
+    data = present_comparison_result(result)
+    assert data["metrics"]["Bisección"]["converged"] is True
+    assert data["metrics"]["Bisección"]["root"] is not None
+    assert data["metrics"]["Newton-Raphson"]["converged"] is False
+    assert data["metrics"]["Newton-Raphson"]["root"] is None
+    assert data["metrics"]["Newton-Raphson"]["error_message"] is not None
+
+
+def test_e2e_comparison_partial_newton_only() -> None:
+    """De extremo a extremo: sólo Newton converge; bisección falla por bracketing inválido.
+
+    f(x) = x² - 1 en [5, 10] con Newton en x₀=3:
+    - Bisección: f(5)=24, f(10)=99 → mismo signo → invalid_bracket
+    - Newton: desde x₀=3 converge rápido a 1.0
+    """
+    request = ComparisonRequest(
+        expression="x**2 - 1",
+        bisection_a=5.0, bisection_b=10.0,
+        newton_x0=3.0,
+        tolerance=1e-6, max_iterations=100,
+    )
+    result = run_comparison(
+        request,
+        compile_fn=compile_expression,
+        derive_fn=lambda expr: compile_with_derivative(expr)[1],
+        run_bisection_fn=run_bisection,
+        run_newton_fn=run_newton,
+        bisection_solve_fn=solve_bisection,
+        newton_solve_fn=solve_newton,
+    )
+
+    # Bisección falla (sin cambio de signo)
+    assert result.bisection.converged is False
+    assert result.bisection.root is None
+    assert result.bisection.iterations_count == 0
+    assert result.bisection.error_message is not None
+
+    # Newton converge a 1.0
+    assert result.newton.converged is True
+    assert result.newton.root is not None
+    assert abs(result.newton.root - 1.0) < 1e-4
+    assert result.newton.iterations_count > 0
+    assert result.newton.error_message is None
+
+    # Presenter: ambas métricas existen
+    data = present_comparison_result(result)
+    assert data["metrics"]["Bisección"]["converged"] is False
+    assert data["metrics"]["Bisección"]["root"] is None
+    assert data["metrics"]["Bisección"]["error_message"] is not None
+    assert data["metrics"]["Newton-Raphson"]["converged"] is True
+    assert data["metrics"]["Newton-Raphson"]["root"] is not None
+
+
 if __name__ == "__main__":
     test_e2e_smoke()
     test_e2e_newton_smoke()
     test_e2e_comparison_smoke()
     test_e2e_comparison_one_missing()
+    test_e2e_comparison_partial_bisection_only()
+    test_e2e_comparison_partial_newton_only()
     print("=== TODAS LAS VERIFICACIONES E2E PASARON ===")

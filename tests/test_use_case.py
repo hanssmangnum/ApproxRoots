@@ -413,3 +413,67 @@ class TestRunComparison:
             assert isinstance(summary.iterations_count, int)
             # root, final_error, error_message son Optional[float] — pueden ser None
             assert summary.root is not None or not summary.converged
+
+    def test_bisection_succeeds_newton_fails_summary(self):
+        """DADO bisección exitosa y Newton fallando
+           CUANDO run_comparison se ejecuta
+           ENTONCES el resumen de Newton incluye error_message y bisección está completa."""
+        request = ComparisonRequest(
+            expression="x**2 - 4",
+            bisection_a=1.0, bisection_b=3.0,
+            newton_x0=3.0,
+            tolerance=1e-6, max_iterations=100,
+        )
+        result = run_comparison(
+            request,
+            compile_fn=_make_compile_fn,
+            derive_fn=_make_newton_compile_fn,
+            run_bisection_fn=_bisection_success_use_case,
+            run_newton_fn=_newton_failing_use_case,
+            bisection_solve_fn=lambda ev, cfg: _bisection_success_use_case(None, None, None),
+            newton_solve_fn=lambda f, df, cfg: _newton_failing_use_case(None, None, None, None),
+        )
+
+        # Bisection successful
+        assert result.bisection.converged is True
+        assert result.bisection.root == 1.75
+        assert result.bisection.error_message is None
+        assert result.bisection.iterations_count == 2
+
+        # Newton failed
+        assert result.newton.converged is False
+        assert result.newton.root is None
+        assert result.newton.error_message == "Derivative is zero"
+        assert result.newton.iterations_count == 0
+
+    def test_newton_succeeds_bisection_fails_summary(self):
+        """DADO Newton exitoso y bisección fallando
+           CUANDO run_comparison se ejecuta
+           ENTONCES el resumen de bisección incluye error_message y Newton está completo."""
+        request = ComparisonRequest(
+            expression="x**2 - 4",
+            bisection_a=1.0, bisection_b=3.0,
+            newton_x0=3.0,
+            tolerance=1e-6, max_iterations=100,
+        )
+        result = run_comparison(
+            request,
+            compile_fn=_make_compile_fn,
+            derive_fn=_make_newton_compile_fn,
+            run_bisection_fn=_bisection_failing_use_case,
+            run_newton_fn=_newton_success_use_case,
+            bisection_solve_fn=lambda ev, cfg: _bisection_failing_use_case(None, None, None),
+            newton_solve_fn=lambda f, df, cfg: _newton_success_use_case(None, None, None, None),
+        )
+
+        # Bisection failed
+        assert result.bisection.converged is False
+        assert result.bisection.root is None
+        assert result.bisection.error_message == "No sign change in interval"
+        assert result.bisection.iterations_count == 0
+
+        # Newton successful
+        assert result.newton.converged is True
+        assert result.newton.root is not None
+        assert result.newton.error_message is None
+        assert result.newton.iterations_count == 2

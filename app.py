@@ -177,6 +177,8 @@ def init_state():
         "convergio"      : None,
         "ejecutado"      : False,
         "historial"      : [],
+        "err_bis"        : None,
+        "err_nwt"        : None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -244,7 +246,7 @@ def _clear_failed_run_state() -> None:
     """
     st.session_state["ejecutado"] = False
     # Comparison keys may linger from a previous successful comparison run.
-    for key in ("iters_bis", "iters_nwt", "raiz_bis", "raiz_nwt", "conv_bis", "conv_nwt"):
+    for key in ("iters_bis", "iters_nwt", "raiz_bis", "raiz_nwt", "conv_bis", "conv_nwt", "err_bis", "err_nwt"):
         st.session_state.pop(key, None)
 
 
@@ -430,29 +432,28 @@ if ejecutar:
             )
             nwt_data = present_newton_result(nwt_result)
 
-            if bis_result.status != "success" and nwt_result.status != "success":
+            bis_ok = bis_result.status == "success"
+            nwt_ok = nwt_result.status == "success"
+
+            # Clear stale warning keys from previous comparison runs
+            st.session_state.pop("err_bis", None)
+            st.session_state.pop("err_nwt", None)
+
+            if bis_ok and nwt_ok:
+                _apply_comparison_session(bis_data, nwt_data)
+            elif bis_ok and not nwt_ok:
+                _apply_comparison_session(bis_data, nwt_data)
+                st.session_state["err_nwt"] = nwt_result.error_message or "Error desconocido"
+            elif not bis_ok and nwt_ok:
+                _apply_comparison_session(bis_data, nwt_data)
+                st.session_state["err_bis"] = bis_result.error_message or "Error desconocido"
+            else:
                 _clear_failed_run_state()
                 error_msg = (
                     "Comparación: ambos métodos fallaron. "
                     f"Bisección: {bis_result.error_message or 'Error desconocido'}. "
                     f"Newton-Raphson: {nwt_result.error_message or 'Error desconocido'}."
                 )
-            elif bis_result.status != "success":
-                _clear_failed_run_state()
-                error_msg = (
-                    "Comparación: Bisección falló — "
-                    f"{bis_result.error_message or 'Error desconocido'}. "
-                    "Newton-Raphson se ejecutó correctamente."
-                )
-            elif nwt_result.status != "success":
-                _clear_failed_run_state()
-                error_msg = (
-                    "Comparación: Newton-Raphson falló — "
-                    f"{nwt_result.error_message or 'Error desconocido'}. "
-                    "Bisección se ejecutó correctamente."
-                )
-            else:
-                _apply_comparison_session(bis_data, nwt_data)
 
     except ValueError as e:
         _clear_failed_run_state()
@@ -510,54 +511,79 @@ if not st.session_state["ejecutado"]:
 # ══════════════════════════════════════════════
 
 if st.session_state["metodo_activo"] == "Comparación":
-    iters_bis = st.session_state["iters_bis"]
-    iters_nwt = st.session_state["iters_nwt"]
+    iters_bis = st.session_state.get("iters_bis", [])
+    iters_nwt = st.session_state.get("iters_nwt", [])
     f         = st.session_state["f"]
+    err_bis   = st.session_state.get("err_bis")
+    err_nwt   = st.session_state.get("err_nwt")
+    raiz_bis  = st.session_state.get("raiz_bis")
+    raiz_nwt  = st.session_state.get("raiz_nwt")
 
     st.markdown("## Comparación: Bisección vs Newton-Raphson")
 
-    # Métricas
+    # ── Banners de advertencia para métodos fallidos ──
+    if err_bis:
+        st.warning(f"⚠️ **Bisección no disponible:** {err_bis}")
+    if err_nwt:
+        st.warning(f"⚠️ **Newton-Raphson no disponible:** {err_nwt}")
+
+    # ── Métricas ──
     c1, c2, c3, c4 = st.columns(4)
     with c1:
+        val = fmt(raiz_bis) if raiz_bis is not None else "—"
         st.markdown(f"""<div class="metric-card"><div class="label">Raíz (Bisección)</div>
-        <div class="value">{fmt(st.session_state['raiz_bis'])}</div></div>""", unsafe_allow_html=True)
+        <div class="value">{val}</div></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown(f"""<div class="metric-card"><div class="label">Iters. Bisección</div>
         <div class="value">{len(iters_bis)}</div></div>""", unsafe_allow_html=True)
     with c3:
+        val = fmt(raiz_nwt) if raiz_nwt is not None else "—"
         st.markdown(f"""<div class="metric-card"><div class="label">Raíz (Newton-R.)</div>
-        <div class="value">{fmt(st.session_state['raiz_nwt'])}</div></div>""", unsafe_allow_html=True)
+        <div class="value">{val}</div></div>""", unsafe_allow_html=True)
     with c4:
         st.markdown(f"""<div class="metric-card"><div class="label">Iters. Newton-R.</div>
         <div class="value">{len(iters_nwt)}</div></div>""", unsafe_allow_html=True)
 
     st.markdown("")
 
-    col_g, col_t = st.columns([3, 2])
-    with col_g:
-        fig = graficar_comparacion(iters_bis, iters_nwt)
-        st.pyplot(fig)
-        plt.close(fig)
+    # ── Gráfica y tablas ────────────────────────
+    bis_has_data = len(iters_bis) > 0
+    nwt_has_data = len(iters_nwt) > 0
 
-    with col_t:
-        st.markdown("#### Bisección")
-        import pandas as pd
-        df_bis = pd.DataFrame([{
-            "Iter."     : it["iteracion"],
-            "xₘ"        : fmt(it["xm"], 6),
-            "f(xₘ)"     : fmt(it["f(xm)"], 4),
-            "Error abs.": fmt(it["error_abs"], 4),
-        } for it in iters_bis])
-        st.dataframe(df_bis, use_container_width=True, hide_index=True, height=220)
+    if bis_has_data or nwt_has_data:
+        col_g, col_t = st.columns([3, 2])
+        with col_g:
+            if bis_has_data and nwt_has_data:
+                fig = graficar_comparacion(iters_bis, iters_nwt)
+            elif bis_has_data:
+                fig = graficar_convergencia(iters_bis, metodo="Bisección")
+            else:
+                fig = graficar_convergencia(iters_nwt, metodo="Newton-Raphson")
+            st.pyplot(fig)
+            plt.close(fig)
 
-        st.markdown("#### Newton-Raphson")
-        df_nwt = pd.DataFrame([{
-            "Iter."     : it["iteracion"],
-            "x₁"        : fmt(it["x_nuevo"], 6),
-            "f(x)"      : fmt(it["f(x)"], 4),
-            "Error abs.": fmt(it["error_abs"], 4),
-        } for it in iters_nwt])
-        st.dataframe(df_nwt, use_container_width=True, hide_index=True, height=220)
+        with col_t:
+            import pandas as pd
+
+            if bis_has_data:
+                st.markdown("#### Bisección")
+                df_bis = pd.DataFrame([{
+                    "Iter."     : it["iteracion"],
+                    "xₘ"        : fmt(it["xm"], 6),
+                    "f(xₘ)"     : fmt(it["f(xm)"], 4),
+                    "Error abs.": fmt(it["error_abs"], 4),
+                } for it in iters_bis])
+                st.dataframe(df_bis, use_container_width=True, hide_index=True, height=220)
+
+            if nwt_has_data:
+                st.markdown("#### Newton-Raphson")
+                df_nwt = pd.DataFrame([{
+                    "Iter."     : it["iteracion"],
+                    "x₁"        : fmt(it["x_nuevo"], 6),
+                    "f(x)"      : fmt(it["f(x)"], 4),
+                    "Error abs.": fmt(it["error_abs"], 4),
+                } for it in iters_nwt])
+                st.dataframe(df_nwt, use_container_width=True, hide_index=True, height=220)
 
     st.stop()
 
