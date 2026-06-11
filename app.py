@@ -235,6 +235,19 @@ def _apply_comparison_session(
     st.session_state["ejecutado"]     = True
 
 
+def _clear_failed_run_state() -> None:
+    """Clears session state from a previous successful run so stale results
+    don't appear under an error banner after a failure.
+
+    Safe to call multiple times — clears only the keys that are needed
+    for the empty-state guard and comparison leftovers.
+    """
+    st.session_state["ejecutado"] = False
+    # Comparison keys may linger from a previous successful comparison run.
+    for key in ("iters_bis", "iters_nwt", "raiz_bis", "raiz_nwt", "conv_bis", "conv_nwt"):
+        st.session_state.pop(key, None)
+
+
 # ══════════════════════════════════════════════
 # Barra lateral
 # ══════════════════════════════════════════════
@@ -347,6 +360,7 @@ if ejecutar:
                     len(result.iterations),
                 )
             else:
+                _clear_failed_run_state()
                 error_msg = result.error_message or "Bisección falló."
 
         elif metodo == "Newton-Raphson":
@@ -377,6 +391,7 @@ if ejecutar:
                     len(result.iterations),
                 )
             else:
+                _clear_failed_run_state()
                 error_msg = result.error_message or "Newton-Raphson falló."
 
         elif metodo == "Comparación":
@@ -415,11 +430,35 @@ if ejecutar:
             )
             nwt_data = present_newton_result(nwt_result)
 
-            _apply_comparison_session(bis_data, nwt_data)
+            if bis_result.status != "success" and nwt_result.status != "success":
+                _clear_failed_run_state()
+                error_msg = (
+                    "Comparación: ambos métodos fallaron. "
+                    f"Bisección: {bis_result.error_message or 'Error desconocido'}. "
+                    f"Newton-Raphson: {nwt_result.error_message or 'Error desconocido'}."
+                )
+            elif bis_result.status != "success":
+                _clear_failed_run_state()
+                error_msg = (
+                    "Comparación: Bisección falló — "
+                    f"{bis_result.error_message or 'Error desconocido'}. "
+                    "Newton-Raphson se ejecutó correctamente."
+                )
+            elif nwt_result.status != "success":
+                _clear_failed_run_state()
+                error_msg = (
+                    "Comparación: Newton-Raphson falló — "
+                    f"{nwt_result.error_message or 'Error desconocido'}. "
+                    "Bisección se ejecutó correctamente."
+                )
+            else:
+                _apply_comparison_session(bis_data, nwt_data)
 
     except ValueError as e:
+        _clear_failed_run_state()
         error_msg = str(e)
     except Exception as e:
+        _clear_failed_run_state()
         error_msg = f"Error inesperado: {e}"
 
 
