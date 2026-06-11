@@ -1,7 +1,11 @@
 # app.py
 
 import streamlit as st
-import streamlit.components.v1 as components
+
+try:
+    import streamlit.components.v1 as components
+except Exception:  # pragma: no cover - compatibilidad para tests con mocks simples
+    components = None
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
@@ -42,6 +46,19 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+    :root {
+        --ar-surface: var(--secondary-background-color);
+        --ar-surface-border: rgba(148, 163, 184, 0.22);
+        --ar-muted: color-mix(in srgb, var(--text-color) 58%, transparent);
+        --ar-info-bg: color-mix(in srgb, var(--primary-color) 14%, var(--background-color));
+        --ar-info-border: color-mix(in srgb, var(--primary-color) 34%, transparent);
+        --ar-info-text: color-mix(in srgb, var(--primary-color) 78%, var(--text-color));
+        --ar-badge-ok-bg: color-mix(in srgb, #22c55e 18%, var(--background-color));
+        --ar-badge-ok-text: color-mix(in srgb, #16a34a 72%, var(--text-color));
+        --ar-badge-fail-bg: color-mix(in srgb, #ef4444 18%, var(--background-color));
+        --ar-badge-fail-text: color-mix(in srgb, #dc2626 72%, var(--text-color));
+    }
+
     /* Fuente y fondo general */
     html, body, [class*="css"] {
         font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -69,15 +86,15 @@ st.markdown("""
 
     /* Tarjetas de resultados */
     .metric-card {
-        background: #f8f9fc;
-        border: 1px solid #e2e8f0;
+        background: var(--ar-surface);
+        border: 1px solid var(--ar-surface-border);
         border-radius: 10px;
         padding: 1rem 1.2rem;
         text-align: center;
     }
     .metric-card .label {
         font-size: 0.75rem;
-        color: #64748b;
+        color: var(--ar-muted);
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -85,23 +102,23 @@ st.markdown("""
     .metric-card .value {
         font-size: 1.3rem;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--text-color);
         font-family: 'Courier New', monospace;
         margin-top: 4px;
     }
 
     /* Badge convergencia */
     .badge-ok {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--ar-badge-ok-bg);
+        color: var(--ar-badge-ok-text);
         padding: 4px 14px;
         border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 600;
     }
     .badge-fail {
-        background: #fee2e2;
-        color: #991b1b;
+        background: var(--ar-badge-fail-bg);
+        color: var(--ar-badge-fail-text);
         padding: 4px 14px;
         border-radius: 20px;
         font-size: 0.85rem;
@@ -110,12 +127,12 @@ st.markdown("""
 
     /* Iteración actual */
     .iter-display {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
+        background: var(--ar-info-bg);
+        border: 1px solid var(--ar-info-border);
         border-radius: 8px;
         padding: 0.6rem 1rem;
         font-size: 0.9rem;
-        color: #1e40af;
+        color: var(--ar-info-text);
         font-weight: 500;
         text-align: center;
         margin: 0.5rem 0;
@@ -126,7 +143,17 @@ st.markdown("""
 
     /* Barra lateral */
     section[data-testid="stSidebar"] {
-        background: #f8fafc;
+        background: var(--ar-surface);
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: var(--text-color);
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] .stCaption {
+        color: var(--text-color) !important;
     }
 
     /* Separador con texto */
@@ -135,7 +162,7 @@ st.markdown("""
         align-items: center;
         gap: 10px;
         margin: 1rem 0 0.5rem;
-        color: #64748b;
+        color: var(--ar-muted);
         font-size: 0.8rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -146,7 +173,7 @@ st.markdown("""
         content: '';
         flex: 1;
         height: 1px;
-        background: #e2e8f0;
+        background: var(--ar-surface-border);
     }
 
     /* Chips de ejemplo */
@@ -168,65 +195,66 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-components.html(
-    """
-    <script>
-    const hiddenTexts = [
-      "Deploy",
-      "Rerun",
-      "Clear cache",
-      "Auto rerun",
-      "Made with Streamlit"
-    ];
+if components is not None:
+    components.html(
+        """
+        <script>
+        const hiddenTexts = [
+          "Deploy",
+          "Rerun",
+          "Clear cache",
+          "Auto rerun",
+          "Made with Streamlit"
+        ];
 
-    function textMatches(node, expected) {
-      const value = (node.textContent || "").trim();
-      return value === expected || value.startsWith(expected + " ");
-    }
+        function textMatches(node, expected) {
+          const value = (node.textContent || "").trim();
+          return value === expected || value.startsWith(expected + " ");
+        }
 
-    function forceVisibleCoreUi() {
-      const header = window.parent.document.querySelector('header[data-testid="stHeader"]');
-      const toolbar = window.parent.document.querySelector('[data-testid="stToolbar"]');
-      const statusWidget = window.parent.document.querySelector('[data-testid="stStatusWidget"]');
+        function forceVisibleCoreUi() {
+          const header = window.parent.document.querySelector('header[data-testid="stHeader"]');
+          const toolbar = window.parent.document.querySelector('[data-testid="stToolbar"]');
+          const statusWidget = window.parent.document.querySelector('[data-testid="stStatusWidget"]');
 
-      [header, toolbar, statusWidget].forEach((node) => {
-        if (!node) return;
-        node.style.display = "";
-        node.style.visibility = "visible";
-        node.style.height = "";
-      });
-    }
+          [header, toolbar, statusWidget].forEach((node) => {
+            if (!node) return;
+            node.style.display = "";
+            node.style.visibility = "visible";
+            node.style.height = "";
+          });
+        }
 
-    function hideMenuEntry(expectedText) {
-      const nodes = window.parent.document.querySelectorAll('li, div[role="menuitem"], button, span, p');
-      nodes.forEach((node) => {
-        if (!textMatches(node, expectedText)) return;
+        function hideMenuEntry(expectedText) {
+          const nodes = window.parent.document.querySelectorAll('li, div[role="menuitem"], button, span, p');
+          nodes.forEach((node) => {
+            if (!textMatches(node, expectedText)) return;
 
-        const target = node.closest('li, div[role="menuitem"], button') || node;
-        if (!target) return;
+            const target = node.closest('li, div[role="menuitem"], button') || node;
+            if (!target) return;
 
-        target.style.display = 'none';
-        target.style.visibility = 'hidden';
-      });
-    }
+            target.style.display = 'none';
+            target.style.visibility = 'hidden';
+          });
+        }
 
-    function hideNativeUi() {
-      forceVisibleCoreUi();
+        function hideNativeUi() {
+          forceVisibleCoreUi();
 
-      hideMenuEntry('Deploy');
-      hideMenuEntry('Rerun');
-      hideMenuEntry('Clear cache');
-      hideMenuEntry('Auto rerun');
-      hideMenuEntry('Made with Streamlit');
-    }
+          hideMenuEntry('Deploy');
+          hideMenuEntry('Rerun');
+          hideMenuEntry('Clear cache');
+          hideMenuEntry('Auto rerun');
+          hideMenuEntry('Made with Streamlit');
+        }
 
-    hideNativeUi();
-    const observer = new MutationObserver(hideNativeUi);
-    observer.observe(window.parent.document.body, { childList: true, subtree: true });
-    </script>
-    """,
-    height=0,
-)
+        hideNativeUi();
+        const observer = new MutationObserver(hideNativeUi);
+        observer.observe(window.parent.document.body, { childList: true, subtree: true });
+        </script>
+        """,
+        height=0,
+    )
 
 
 # ══════════════════════════════════════════════
@@ -841,7 +869,9 @@ with tab_tabla:
     # Resaltar fila actual
     def resaltar_fila(row):
         if row["Iter."] == iter_actual + 1:
-            return ["background-color: #eff6ff; font-weight: bold"] * len(row)
+            return [
+                "background-color: color-mix(in srgb, var(--primary-color) 12%, var(--background-color)); font-weight: bold"
+            ] * len(row)
         return [""] * len(row)
 
     st.dataframe(
