@@ -137,42 +137,42 @@ Nota: `run_comparison()` y `present_comparison_result()` ya existen como piezas 
 
 ## Mapa de tipos entre capas
 
-| Capa origen | Tipo | Capa destino | Tipo |
-|---|---|---|---|
-| UI (sidebar) | `float`, `str` | Caso de uso | `*Request` |
-| Caso de uso | `*Request` | Parser | `str` |
-| Caso de uso | `SolverConfig` / `NewtonConfig` | Solver | `*Config` |
-| Parser | `callable float→float` | Solver | `callable` |
-| Solver | `*Result` | Caso de uso | `*Result` |
-| Caso de uso | `*Result` | Presenter | `*Result` |
-| Presenter | `dict` | app.py | `dict` |
-| app.py | `dict` | `graficas.py` | `dict` + `callable` |
+| Capa origen  | Tipo                            | Capa destino  | Tipo                |
+| ------------ | ------------------------------- | ------------- | ------------------- |
+| UI (sidebar) | `float`, `str`                  | Caso de uso   | `*Request`          |
+| Caso de uso  | `*Request`                      | Parser        | `str`               |
+| Caso de uso  | `SolverConfig` / `NewtonConfig` | Solver        | `*Config`           |
+| Parser       | `callable float→float`          | Solver        | `callable`          |
+| Solver       | `*Result`                       | Caso de uso   | `*Result`           |
+| Caso de uso  | `*Result`                       | Presenter     | `*Result`           |
+| Presenter    | `dict`                          | app.py        | `dict`              |
+| app.py       | `dict`                          | `graficas.py` | `dict` + `callable` |
 
 ## Estados de salida
 
 ### BisectionResult
 
-| status | Significado |
-|---|---|
-| `success` | Convergió dentro de la tolerancia |
-| `invalid_bracket` | f(a) y f(b) no cambian de signo |
-| `non_finite` | Evaluador devolvió NaN o infinito |
-| `max_iterations` | No convergió en el límite de iteraciones |
-| `parse_error` | La expresión no pudo compilarse |
+| status            | Significado                              |
+| ----------------- | ---------------------------------------- |
+| `success`         | Convergió dentro de la tolerancia        |
+| `invalid_bracket` | f(a) y f(b) no cambian de signo          |
+| `non_finite`      | Evaluador devolvió NaN o infinito        |
+| `max_iterations`  | No convergió en el límite de iteraciones |
+| `parse_error`     | La expresión no pudo compilarse          |
 
 ### NewtonResult
 
-| status | Significado |
-|---|---|
-| `success` | Convergió dentro de la tolerancia |
-| `derivative_zero` | La derivada es prácticamente cero |
-| `non_finite` | Evaluador devolvió NaN o infinito |
-| `max_iterations` | No convergió en el límite de iteraciones |
-| `parse_error` | La expresión no pudo compilarse |
+| status            | Significado                              |
+| ----------------- | ---------------------------------------- |
+| `success`         | Convergió dentro de la tolerancia        |
+| `derivative_zero` | La derivada es prácticamente cero        |
+| `non_finite`      | Evaluador devolvió NaN o infinito        |
+| `max_iterations`  | No convergió en el límite de iteraciones |
+| `parse_error`     | La expresión no pudo compilarse          |
 
 ### ComparisonResult
 
-| status | Significado |
-|---|---|
-| `success` | Ambos métodos se ejecutaron (pueden haber convergido o no) |
-| `parse_error` | La expresión no pudo compilarse para ningún método |
+| status        | Significado                                                |
+| ------------- | ---------------------------------------------------------- |
+| `success`     | Ambos métodos se ejecutaron (pueden haber convergido o no) |
+| `parse_error` | La expresión no pudo compilarse para ningún método         |

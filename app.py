@@ -1,6 +1,7 @@
 # app.py
 
 import streamlit as st
+import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
@@ -156,8 +157,76 @@ st.markdown("""
 
     /* Eliminar padding extra en columnas ajustadas */
     .block-container { padding-top: 1rem; }
+
+    /* Ocultar elementos decorativos no deseados */
+    [data-testid="stDecoration"],
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+components.html(
+    """
+    <script>
+    const hiddenTexts = [
+      "Deploy",
+      "Rerun",
+      "Clear cache",
+      "Auto rerun",
+      "Made with Streamlit"
+    ];
+
+    function textMatches(node, expected) {
+      const value = (node.textContent || "").trim();
+      return value === expected || value.startsWith(expected + " ");
+    }
+
+    function forceVisibleCoreUi() {
+      const header = window.parent.document.querySelector('header[data-testid="stHeader"]');
+      const toolbar = window.parent.document.querySelector('[data-testid="stToolbar"]');
+      const statusWidget = window.parent.document.querySelector('[data-testid="stStatusWidget"]');
+
+      [header, toolbar, statusWidget].forEach((node) => {
+        if (!node) return;
+        node.style.display = "";
+        node.style.visibility = "visible";
+        node.style.height = "";
+      });
+    }
+
+    function hideMenuEntry(expectedText) {
+      const nodes = window.parent.document.querySelectorAll('li, div[role="menuitem"], button, span, p');
+      nodes.forEach((node) => {
+        if (!textMatches(node, expectedText)) return;
+
+        const target = node.closest('li, div[role="menuitem"], button') || node;
+        if (!target) return;
+
+        target.style.display = 'none';
+        target.style.visibility = 'hidden';
+      });
+    }
+
+    function hideNativeUi() {
+      forceVisibleCoreUi();
+
+      hideMenuEntry('Deploy');
+      hideMenuEntry('Rerun');
+      hideMenuEntry('Clear cache');
+      hideMenuEntry('Auto rerun');
+      hideMenuEntry('Made with Streamlit');
+    }
+
+    hideNativeUi();
+    const observer = new MutationObserver(hideNativeUi);
+    observer.observe(window.parent.document.body, { childList: true, subtree: true });
+    </script>
+    """,
+    height=0,
+)
 
 
 # ══════════════════════════════════════════════
