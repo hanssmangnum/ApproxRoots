@@ -49,7 +49,7 @@ def solve_bisection(
     BisectionResult
         Resultado tipificado con registros de iteración, raíz y estado.
     """
-    # ── Validate bracket ──────────────────────────────────────────────
+    # ── Validar intervalo ─────────────────────────────────────────────
     try:
         fa = _safe_evaluate(evaluator, config.a, "a")
         fb = _safe_evaluate(evaluator, config.b, "b")
@@ -62,7 +62,7 @@ def solve_bisection(
             error_message=str(exc),
         )
 
-    # ── Boundary root check ───────────────────────────────────────────
+    # ── Verificar raíz en el límite ────────────────────────────────────
     if fa == 0.0:
         return BisectionResult(
             iterations=[],
@@ -90,7 +90,7 @@ def solve_bisection(
             ),
         )
 
-    # ── Main loop ─────────────────────────────────────────────────────
+    # ── Bucle principal ────────────────────────────────────────────────
     a, b = config.a, config.b
     iterations: list[BisectionIteration] = []
     xm_previous: float | None = None
@@ -134,7 +134,7 @@ def solve_bisection(
                 status="success",
             )
 
-        # Update interval for next iteration
+        # Actualizar intervalo para la siguiente iteración
         fa = fa if a == config.a else _safe_evaluate(evaluator, a, "a")
         if fa * fxm < 0:
             b = xm
@@ -143,7 +143,7 @@ def solve_bisection(
 
         xm_previous = xm
 
-    # Reached max iterations without convergence
+    # Se alcanzó el máximo de iteraciones sin convergencia
     return BisectionResult(
         iterations=iterations,
         root=xm,

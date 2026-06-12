@@ -345,14 +345,14 @@ def _apply_comparison_session(
 
 
 def _clear_failed_run_state() -> None:
-    """Clears session state from a previous successful run so stale results
-    don't appear under an error banner after a failure.
+    """Limpia el estado de sesión de una ejecución exitosa previa para que
+    resultados obsoletos no aparezcan bajo un banner de error tras un fallo.
 
-    Safe to call multiple times — clears only the keys that are needed
-    for the empty-state guard and comparison leftovers.
+    Seguro de llamar múltiples veces — limpia solo las claves necesarias
+    para la guarda de estado vacío y los residuos de comparación.
     """
     st.session_state["ejecutado"] = False
-    # Comparison keys may linger from a previous successful comparison run.
+    # Las claves de comparación pueden persistir de una ejecución previa exitosa.
     for key in ("iters_bis", "iters_nwt", "raiz_bis", "raiz_nwt", "conv_bis", "conv_nwt", "err_bis", "err_nwt"):
         st.session_state.pop(key, None)
 
@@ -527,7 +527,7 @@ if ejecutar:
                 bis_ok = result.bisection.status == "success"
                 nwt_ok = result.newton.status == "success"
 
-                # Clear stale warning keys from previous comparison runs
+                # Limpiar claves de advertencia obsoletas de ejecuciones de comparación previas
                 st.session_state.pop("err_bis", None)
                 st.session_state.pop("err_nwt", None)
 
@@ -697,7 +697,7 @@ expr          = st.session_state["expr"]
 
 n_iters = len(iteraciones)
 
-# ── Zero-iteration success guard ────────────────────
+    # ── Guarda de éxito con cero iteraciones ─────────────
 # La raíz se encontró en un límite (f(a)=0 o f(b)=0); no se registraron iteraciones.
 if n_iters == 0 and convergio:
     badge = '<span class="badge-ok">✔ Convergió</span>'

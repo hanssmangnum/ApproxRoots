@@ -83,7 +83,7 @@ class TestCompileWithDerivative:
         """DADO una expresión polinómica
            CUANDO se llama a compile_with_derivative
            ENTONCES df coincide con la derivada simbólica."""
-        # d/dx of x**3 - x - 2 = 3x**2 - 1
+        # d/dx de x**3 - x - 2 = 3x**2 - 1
         f, df = compile_with_derivative("x**3 - x - 2")
         assert abs(f(1.0) - (-2.0)) < 1e-10   # 1 - 1 - 2 = -2
         assert abs(df(1.0) - 2.0) < 1e-10     # 3 - 1 = 2
@@ -93,7 +93,7 @@ class TestCompileWithDerivative:
         """DADO una expresión trigonométrica
            CUANDO se llama a compile_with_derivative
            ENTONCES df coincide con la derivada simbólica."""
-        # d/dx of sin(x) = cos(x)
+        # d/dx de sin(x) = cos(x)
         import math
         f, df = compile_with_derivative("sin(x)")
         assert abs(f(0.0) - 0.0) < 1e-10

@@ -20,7 +20,7 @@ def _build_mock_st():
     """Crea un mock de streamlit para poder importar app.py sin Streamlit."""
     mock_st = MagicMock()
 
-    # Session state inicial — ejecutado=True, metodo_activo="Bisección"
+    # Estado de sesión inicial — ejecutado=True, metodo_activo="Bisección"
     # evita las ramas st.stop() y de comparación durante la importación.
     mock_st.session_state = FakeSession({
         "iteraciones": [{"iteracion": 1, "xm": 1.5, "a": 1.0, "b": 2.0,

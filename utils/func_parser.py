@@ -1,4 +1,4 @@
-# utils/parser.py
+# utils/func_parser.py
 
 import sympy as sp
 import numpy as np

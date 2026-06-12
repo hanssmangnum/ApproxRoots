@@ -56,7 +56,7 @@ def solve_newton(
     iterations: list[NewtonIteration] = []
 
     for i in range(1, config.max_iterations + 1):
-        # ── Evaluate f(x) and f'(x) ──────────────────────────────────
+        # ── Evaluar f(x) y f'(x) ─────────────────────────────────────
         try:
             fx = _safe_evaluate(f, x, f"x_{i-1}")
             dfx = _safe_evaluate(df, x, f"x'_{i-1}")
@@ -69,7 +69,7 @@ def solve_newton(
                 error_message=str(exc),
             )
 
-        # ── Check for zero derivative ────────────────────────────────
+        # ── Verificar derivada cero ───────────────────────────────────
         if abs(dfx) < 1e-14:
             return NewtonResult(
                 iterations=iterations,
@@ -82,13 +82,13 @@ def solve_newton(
             ),
             )
 
-        # ── Newton step ──────────────────────────────────────────────
+        # ── Paso de Newton ───────────────────────────────────────────
         x_next = x - fx / dfx
 
         error_abs = abs(x_next - x)
         error_rel = error_abs / abs(x_next) if x_next != 0.0 else float("inf")
 
-        # Tangent line: y = fx + dfx * (t - x) → y = m*t + b
+        # Recta tangente: y = fx + dfx * (t - x) → y = m*t + b
         # m = dfx, b = fx - dfx * x
         tangent_slope = dfx
         tangent_intercept = fx - dfx * x
@@ -107,7 +107,7 @@ def solve_newton(
 
         x = x_next
 
-        # ── Check for non-finite new value ──────────────────────────
+        # ── Verificar valor nuevo no finito ───────────────────────────
         if not np.isfinite(x):
             return NewtonResult(
                 iterations=iterations,
@@ -117,7 +117,7 @@ def solve_newton(
                 error_message=f"El paso de Newton produjo un valor no finito: {x}.",
             )
 
-        # ── Convergence check ────────────────────────────────────────
+        # ── Verificación de convergencia ──────────────────────────────
         try:
             fx_next = _safe_evaluate(f, x, "x")
         except ValueError as exc:
@@ -137,7 +137,7 @@ def solve_newton(
                 status="success",
             )
 
-    # Reached max iterations without convergence
+    # Se alcanzó el máximo de iteraciones sin convergencia
     return NewtonResult(
         iterations=iterations,
         root=x,

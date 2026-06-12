@@ -330,7 +330,7 @@ def graficar_iteracion_newton_vm(vm: "NewtonChartVM") -> plt.Figure:
 
 def graficar_convergencia_vm(vm: "ConvergenceChartVM") -> plt.Figure:
     """Sobrecarga VM-aware — construye la lista de iteraciones desde la serie del VM."""
-    # Reconstruct the iteration-dict format expected by the legacy function.
+    # Reconstruir el formato de dict de iteración que espera la función legacy.
     iteraciones = [
         {"iteracion": entry["iteration"], "error_abs": entry["error_abs"]}
         for entry in vm.series

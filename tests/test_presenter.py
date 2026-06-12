@@ -149,7 +149,7 @@ class TestPresenterZeroIterations:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Newton presenter tests
+# Pruebas del presenter de Newton
 # ═════════════════════════════════════════════════════════════════════════════
 
 
@@ -283,7 +283,7 @@ class TestNewtonPresenterMaxIterations:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Comparison presenter tests
+# Pruebas del presenter de comparación
 # ═════════════════════════════════════════════════════════════════════════════
 
 from domain.models.comparison import (  # noqa: E402
@@ -413,7 +413,7 @@ class TestComparisonPresenter:
         assert n["converged"] is False
         assert n["error_message"] == "Derivative is zero"
 
-        # Session: bisection has data, newton has empty iterations
+        # Sesión: bisección tiene datos, newton tiene iteraciones vacías
         assert len(data["session"]["iters_bis"]) > 0
         assert len(data["session"]["iters_nwt"]) == 0
 
@@ -451,7 +451,7 @@ class TestComparisonPresenter:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Chart view-model tests
+# Pruebas de view-models de gráficos
 # ═════════════════════════════════════════════════════════════════════════════
 
 from ui.view_models import (  # noqa: E402
@@ -561,7 +561,7 @@ class TestFunctionChartVM:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Chart presenter tests
+# Pruebas del constructor de gráficos
 # ═════════════════════════════════════════════════════════════════════════════
 
 from utils.graficas import (  # noqa: E402
@@ -714,7 +714,7 @@ class TestBuildComparisonSeries:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# graficas.py VM overload tests
+# Pruebas de sobrecargas VM en graficas.py
 # ═════════════════════════════════════════════════════════════════════════════
 
 
