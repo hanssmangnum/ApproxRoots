@@ -292,6 +292,8 @@ from domain.models.comparison import (  # noqa: E402
     MethodSummary,
 )
 from ui.presenters.comparison_presenter import present_comparison_result  # noqa: E402
+from domain.models.bisection import BisectionResult, BisectionIteration  # noqa: E402
+from domain.models.newton import NewtonResult, NewtonIteration  # noqa: E402
 
 
 def _comparison_both_success():
@@ -303,6 +305,7 @@ def _comparison_both_success():
             iterations_count=20,
             final_error=5.7e-7,
             error_message=None,
+            status="success",
         ),
         newton=MethodSummary(
             method_name="Newton-Raphson",
@@ -311,9 +314,22 @@ def _comparison_both_success():
             iterations_count=6,
             final_error=3.2e-9,
             error_message=None,
+            status="success",
         ),
         expression="x**2 - 4",
         status="success",
+        bisection_result=BisectionResult(
+            iterations=[BisectionIteration(1, 1.0, 2.0, 1.5, -0.875, 0.5, float("inf"))],
+            root=1.521379,
+            converged=True,
+            status="success",
+        ),
+        newton_result=NewtonResult(
+            iterations=[NewtonIteration(1, 3.0, 2.0, 5.0, 6.0, 1.0, 0.5, 6.0, -13.0)],
+            root=2.0,
+            converged=True,
+            status="success",
+        ),
     )
 
 
@@ -326,6 +342,7 @@ def _comparison_one_fails():
             iterations_count=20,
             final_error=5.7e-7,
             error_message=None,
+            status="success",
         ),
         newton=MethodSummary(
             method_name="Newton-Raphson",
@@ -334,9 +351,23 @@ def _comparison_one_fails():
             iterations_count=0,
             final_error=None,
             error_message="Derivative is zero",
+            status="derivative_zero",
         ),
         expression="x**2 - 4",
         status="success",
+        bisection_result=BisectionResult(
+            iterations=[BisectionIteration(1, 1.0, 2.0, 1.5, -0.875, 0.5, float("inf"))],
+            root=1.521379,
+            converged=True,
+            status="success",
+        ),
+        newton_result=NewtonResult(
+            iterations=[],
+            root=None,
+            converged=False,
+            status="derivative_zero",
+            error_message="Derivative is zero",
+        ),
     )
 
 
@@ -382,31 +413,41 @@ class TestComparisonPresenter:
         assert n["converged"] is False
         assert n["error_message"] == "Derivative is zero"
 
+        # Session: bisection has data, newton has empty iterations
+        assert len(data["session"]["iters_bis"]) > 0
+        assert len(data["session"]["iters_nwt"]) == 0
+
     def test_chart_data_present(self):
         """DADO un resultado de comparación
            CUANDO se presenta
-           ENTONCES chart_data contiene las claves bisection y newton."""
+           ENTONCES la session contiene iters_bis e iters_nwt."""
         data = present_comparison_result(_comparison_both_success())
-        assert "bisection" in data["chart_data"]
-        assert "newton" in data["chart_data"]
+        assert "iters_bis" in data["session"]
+        assert "iters_nwt" in data["session"]
+        assert len(data["session"]["iters_bis"]) > 0
+        assert len(data["session"]["iters_nwt"]) > 0
 
     def test_combined_series(self):
         """DADO un resultado de comparación
            CUANDO se presenta
-           ENTONCES combined_series tiene entradas para ambos métodos."""
+           ENTONCES la session tiene raiz_bis y raiz_nwt."""
         data = present_comparison_result(_comparison_both_success())
-        assert len(data["combined_series"]) == 2
-        methods = {entry["method"] for entry in data["combined_series"]}
-        assert methods == {"Bisección", "Newton-Raphson"}
+        assert data["session"]["raiz_bis"] == 1.521379
+        assert data["session"]["raiz_nwt"] == 2.0
 
     def test_session_payload(self):
         """DADO un resultado de comparación
            CUANDO se presenta
            ENTONCES el payload de sesión tiene las claves esperadas."""
         data = present_comparison_result(_comparison_both_success())
-        assert "bisection_metrics" in data["session"]
-        assert "newton_metrics" in data["session"]
-        assert "comparison_chart_data" in data["session"]
+        assert "iters_bis" in data["session"]
+        assert "iters_nwt" in data["session"]
+        assert "raiz_bis" in data["session"]
+        assert "raiz_nwt" in data["session"]
+        assert "conv_bis" in data["session"]
+        assert "conv_nwt" in data["session"]
+        assert data["session"]["metodo_activo"] == "Comparación"
+        assert data["session"]["ejecutado"] is True
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -528,6 +569,7 @@ from utils.graficas import (  # noqa: E402
     graficar_iteracion_biseccion_vm,
     graficar_iteracion_newton_vm,
     graficar_convergencia_vm,
+    graficar_comparacion_vm,
 )
 from ui.presenters.chart_presenters import (  # noqa: E402
     build_bisection_chart_vm,
@@ -535,6 +577,7 @@ from ui.presenters.chart_presenters import (  # noqa: E402
     build_convergence_chart_vm,
     build_function_chart_vm,
     build_comparison_series,
+    build_comparison_chart_vm,
 )
 
 
@@ -623,6 +666,29 @@ class TestBuildFunctionChartVM:
         fn = lambda x: x**2 + 1
         vm = build_function_chart_vm(fn, -2.0, 2.0, None)
         assert vm.root is None
+
+
+class TestBuildComparisonChartVM:
+    """Constructor build_comparison_chart_vm."""
+
+    def test_builds_correct_vm(self):
+        """DADO listas de iteración de ambos métodos
+           CUANDO se llama a build_comparison_chart_vm
+           ENTONCES se retorna un ComparisonChartVM con ambas series."""
+        from ui.view_models.charts import ComparisonChartVM
+        iters_bis = [
+            {"iteracion": 1, "error_abs": 1.0},
+            {"iteracion": 2, "error_abs": 0.5},
+        ]
+        iters_nwt = [
+            {"iteracion": 1, "error_abs": 0.1},
+        ]
+        vm = build_comparison_chart_vm(iters_bis, iters_nwt)
+        assert isinstance(vm, ComparisonChartVM)
+        assert len(vm.bisection_series) == 2
+        assert len(vm.newton_series) == 1
+        assert vm.bisection_series[0] == {"iteration": 1, "error_abs": 1.0}
+        assert vm.newton_series[0] == {"iteration": 1, "error_abs": 0.1}
 
 
 class TestBuildComparisonSeries:
@@ -721,6 +787,25 @@ class TestGraficasVMOverloads:
         ]
         vm = ConvergenceChartVM(series=series, title="Bisección")
         fig = graficar_convergencia_vm(vm)
+        assert fig is not None
+        import matplotlib.pyplot as plt
+        plt.close(fig)
+
+    def test_graficar_comparacion_vm_returns_figure(self):
+        """DADO un ComparisonChartVM
+           CUANDO se llama a graficar_comparacion_vm
+           ENTONCES se retorna una Figure de matplotlib."""
+        from ui.view_models.charts import ComparisonChartVM
+        vm = ComparisonChartVM(
+            bisection_series=[
+                {"iteration": 1, "error_abs": 1.0},
+                {"iteration": 2, "error_abs": 0.5},
+            ],
+            newton_series=[
+                {"iteration": 1, "error_abs": 0.1},
+            ],
+        )
+        fig = graficar_comparacion_vm(vm)
         assert fig is not None
         import matplotlib.pyplot as plt
         plt.close(fig)

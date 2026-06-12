@@ -13,6 +13,7 @@ from .charts import (
     NewtonChartVM,
     ConvergenceChartVM,
     FunctionChartVM,
+    ComparisonChartVM,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "NewtonChartVM",
     "ConvergenceChartVM",
     "FunctionChartVM",
+    "ComparisonChartVM",
 ]

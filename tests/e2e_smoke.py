@@ -147,7 +147,9 @@ def test_e2e_comparison_smoke() -> None:
     data = present_comparison_result(result)
     assert "Bisección" in data["metrics"]
     assert "Newton-Raphson" in data["metrics"]
-    assert len(data["combined_series"]) == 2
+    assert data["session"]["metodo_activo"] == "Comparación"
+    assert len(data["session"]["iters_bis"]) > 0
+    assert len(data["session"]["iters_nwt"]) > 0
 
 
 def test_e2e_comparison_one_missing() -> None:

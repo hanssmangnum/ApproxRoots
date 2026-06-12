@@ -9,6 +9,7 @@ from .chart_presenters import (
     build_convergence_chart_vm,
     build_function_chart_vm,
     build_comparison_series,
+    build_comparison_chart_vm,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "build_convergence_chart_vm",
     "build_function_chart_vm",
     "build_comparison_series",
+    "build_comparison_chart_vm",
 ]

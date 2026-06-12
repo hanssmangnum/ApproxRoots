@@ -3,12 +3,18 @@
 """Presenter / adaptador — convierte el ComparisonResult del dominio a formas aptas para la UI."""
 
 from domain.models.comparison import ComparisonResult
+from ui.presenters.bisection_presenter import present_bisection_result
+from ui.presenters.newton_presenter import present_newton_result
 
 
 def present_comparison_result(
     result: ComparisonResult,
 ) -> dict:
     """Convierte un *ComparisonResult* del dominio en datos compatibles con Streamlit.
+
+    Cuando el ``ComparisonResult`` incluye los resultados completos de cada método
+    (``bisection_result`` / ``newton_result``), se usan los sub-presenters para generar
+    los dicts de iteración detallados que necesita la UI de comparación.
 
     Retorna un dict con las claves:
 
@@ -19,12 +25,24 @@ def present_comparison_result(
               "Newton-Raphson": {"root": …, "iterations": …, "error": …, "converged": …},
             }
 
-      - ``chart_data`` – lista normalizada de ``{"method": str, "iteration": int, "error_abs": float}``
-        apta para ``graficar_comparacion`` (ambas series en una lista).
-
-      - ``session`` – dict que puede volcarse en ``st.session_state``
-        (``bisection_metrics``, ``newton_metrics``, ``comparison_chart_data``).
+      - ``session`` – dict que puede volcarse en ``st.session_state`` con las claves
+        que la UI de comparación lee (``iters_bis``, ``iters_nwt``, ``raiz_bis``,
+        ``raiz_nwt``, ``conv_bis``, ``conv_nwt``, ``metodo_activo``, ``ejecutado``).
     """
+    # Generar dicts de iteración detallados usando los sub-presenters
+    if result.bisection_result is not None:
+        bis_presenter = present_bisection_result(result.bisection_result)
+        bis_iterations = bis_presenter["iterations"]
+    else:
+        bis_iterations = []
+
+    if result.newton_result is not None:
+        nwt_presenter = present_newton_result(result.newton_result)
+        nwt_iterations = nwt_presenter["iterations"]
+    else:
+        nwt_iterations = []
+
+    # Métricas escalares por método
     metrics = {}
     for summary in (result.bisection, result.newton):
         metrics[summary.method_name] = {
@@ -35,34 +53,19 @@ def present_comparison_result(
             "error_message": summary.error_message,
         }
 
-    # Series de convergencia listas para graficar (normalizadas entre métodos)
-    chart_data = {"bisection": [], "newton": []}
-    # No tenemos detalles por iteración dentro de MethodSummary, así que
-    # construimos lo que podemos desde los campos del resumen. Los payloads
-    # detallados de gráficos de iteración vienen de chart_presenters (Fase 3).
-    # Para el gráfico de convergencia comparativo emitimos el snapshot escalar.
-    if result.bisection.final_error is not None:
-        chart_data["bisection"] = [
-            {"method": "Bisección", "iteration": result.bisection.iterations_count, "error_abs": result.bisection.final_error},
-        ]
-    if result.newton.final_error is not None:
-        chart_data["newton"] = [
-            {"method": "Newton-Raphson", "iteration": result.newton.iterations_count, "error_abs": result.newton.final_error},
-        ]
-
-    # Series combinadas para graficar_comparacion
-    combined_series = chart_data["bisection"] + chart_data["newton"]
-
-    # Payload de sesión
+    # Payload de sesión — claves que lee la UI de comparación en app.py
     session = {
-        "bisection_metrics": metrics.get("Bisección", {}),
-        "newton_metrics": metrics.get("Newton-Raphson", {}),
-        "comparison_chart_data": combined_series,
+        "iters_bis": bis_iterations,
+        "iters_nwt": nwt_iterations,
+        "raiz_bis": result.bisection.root,
+        "raiz_nwt": result.newton.root,
+        "conv_bis": result.bisection.converged,
+        "conv_nwt": result.newton.converged,
+        "metodo_activo": "Comparación",
+        "ejecutado": True,
     }
 
     return {
         "metrics": metrics,
-        "chart_data": chart_data,
-        "combined_series": combined_series,
         "session": session,
     }

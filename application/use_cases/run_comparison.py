@@ -38,6 +38,7 @@ def _summarise(
         iterations_count=len(result.iterations),
         final_error=final_error,
         error_message=result.error_message,
+        status=result.status,
     )
 
 
@@ -107,4 +108,6 @@ def run_comparison(
         expression=request.expression,
         status=overall_status,
         error_message=error_message,
+        bisection_result=bisection_result,
+        newton_result=newton_result,
     )

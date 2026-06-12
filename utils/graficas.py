@@ -338,6 +338,23 @@ def graficar_convergencia_vm(vm: "ConvergenceChartVM") -> plt.Figure:
     return graficar_convergencia(iteraciones, metodo=vm.title)
 
 
+def graficar_comparacion_vm(vm: "ComparisonChartVM") -> plt.Figure:
+    """Sobrecarga VM-aware para el gráfico de comparación.
+
+    Reconstruye los dicts de iteración en el formato que espera
+    ``graficar_comparacion``.
+    """
+    bis_iters = [
+        {"iteracion": entry["iteration"], "error_abs": entry["error_abs"]}
+        for entry in vm.bisection_series
+    ]
+    nwt_iters = [
+        {"iteracion": entry["iteration"], "error_abs": entry["error_abs"]}
+        for entry in vm.newton_series
+    ]
+    return graficar_comparacion(bis_iters, nwt_iters)
+
+
 # ══════════════════════════════════════════════
 # 6. Secuencia completa de iteraciones
 # ══════════════════════════════════════════════

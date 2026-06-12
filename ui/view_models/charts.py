@@ -67,3 +67,15 @@ class FunctionChartVM:
     x_max: float
     root: Optional[float]
     title: str
+
+
+@dataclass(frozen=True)
+class ComparisonChartVM:
+    """View-model para ``graficar_comparacion``.
+
+    ``bisection_series`` y ``newton_series`` son listas de dicts
+    ``{"iteration": int, "error_abs": float}`` normalizadas.
+    """
+
+    bisection_series: list[dict]
+    newton_series: list[dict]

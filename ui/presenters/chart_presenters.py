@@ -13,6 +13,7 @@ from typing import Callable, Optional
 
 from ui.view_models.charts import (
     BisectionChartVM,
+    ComparisonChartVM,
     ConvergenceChartVM,
     FunctionChartVM,
     NewtonChartVM,
@@ -105,3 +106,18 @@ def build_comparison_series(
         for it in iters_nwt
     ]
     return bis_series, nwt_series
+
+
+def build_comparison_chart_vm(
+    iters_bis: list[dict],
+    iters_nwt: list[dict],
+) -> ComparisonChartVM:
+    """Construye un ``ComparisonChartVM`` desde los dicts de iteración de ambos métodos.
+
+    Cada dict debe contener ``iteracion`` y ``error_abs``.
+    """
+    bis_series, nwt_series = build_comparison_series(iters_bis, iters_nwt)
+    return ComparisonChartVM(
+        bisection_series=bis_series,
+        newton_series=nwt_series,
+    )

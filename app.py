@@ -15,18 +15,28 @@ import sympy as sp
 from utils.func_parser import compile_expression, compile_with_derivative
 from domain.models.bisection import BisectionRequest
 from domain.models.newton import NewtonRequest
+from domain.models.comparison import ComparisonRequest
 from domain.solvers.bisection import solve_bisection
 from domain.solvers.newton import solve_newton
 from application.use_cases.run_bisection import run_bisection
 from application.use_cases.run_newton import run_newton
+from application.use_cases.run_comparison import run_comparison
 from ui.presenters.bisection_presenter import present_bisection_result
 from ui.presenters.newton_presenter import present_newton_result
+from ui.presenters.comparison_presenter import present_comparison_result
+from ui.presenters.chart_presenters import (
+    build_bisection_chart_vm,
+    build_newton_chart_vm,
+    build_convergence_chart_vm,
+    build_function_chart_vm,
+    build_comparison_chart_vm,
+)
 from utils.graficas import (
-    graficar_funcion,
-    graficar_iteracion_biseccion,
-    graficar_iteracion_newton,
-    graficar_convergencia,
-    graficar_comparacion,
+    graficar_funcion_vm,
+    graficar_iteracion_biseccion_vm,
+    graficar_iteracion_newton_vm,
+    graficar_convergencia_vm,
+    graficar_comparacion_vm,
 )
 
 # ══════════════════════════════════════════════
@@ -494,63 +504,57 @@ if ejecutar:
                 error_msg = result.error_message or "Newton-Raphson falló."
 
         elif metodo == "Comparación":
-            # Compilar una vez — ambos casos de uso comparten el mismo evaluador
+            # Compilar una vez — f/df se guardan para los renderizadores de gráficos
             f, df = compile_with_derivative(st.session_state["fn_texto"])
             st.session_state["f"]  = f
             st.session_state["df"] = df
 
-            # Ejecutar bisección a través de su caso de uso + presenter
-            bis_request = BisectionRequest(
+            request = ComparisonRequest(
                 expression=st.session_state["fn_texto"],
-                a=bis_a,
-                b=bis_b,
+                bisection_a=bis_a,
+                bisection_b=bis_b,
+                newton_x0=nwt_x0,
                 tolerance=tol,
                 max_iterations=int(max_iter),
             )
-            bis_result = run_bisection(
-                bis_request,
-                compile_fn=compile_expression,
-                solve_fn=solve_bisection,
-            )
-            bis_data = present_bisection_result(bis_result)
 
-            # Ejecutar Newton a través de su caso de uso + presenter
-            nwt_request = NewtonRequest(
-                expression=st.session_state["fn_texto"],
-                x0=nwt_x0,
-                tolerance=tol,
-                max_iterations=int(max_iter),
-            )
-            nwt_result = run_newton(
-                nwt_request,
+            result = run_comparison(
+                request,
                 compile_fn=compile_expression,
                 derive_fn=lambda expr: compile_with_derivative(expr)[1],
-                solve_fn=solve_newton,
+                run_bisection_fn=run_bisection,
+                run_newton_fn=run_newton,
+                bisection_solve_fn=solve_bisection,
+                newton_solve_fn=solve_newton,
             )
-            nwt_data = present_newton_result(nwt_result)
 
-            bis_ok = bis_result.status == "success"
-            nwt_ok = nwt_result.status == "success"
-
-            # Clear stale warning keys from previous comparison runs
-            st.session_state.pop("err_bis", None)
-            st.session_state.pop("err_nwt", None)
-
-            if bis_ok and nwt_ok:
-                _apply_comparison_session(bis_data, nwt_data)
-            elif bis_ok and not nwt_ok:
-                _apply_comparison_session(bis_data, nwt_data)
-                st.session_state["err_nwt"] = nwt_result.error_message or "Error desconocido"
-            elif not bis_ok and nwt_ok:
-                _apply_comparison_session(bis_data, nwt_data)
-                st.session_state["err_bis"] = bis_result.error_message or "Error desconocido"
-            else:
+            if result.status == "parse_error":
                 _clear_failed_run_state()
-                error_msg = (
-                    "Comparación: ambos métodos fallaron. "
-                    f"Bisección: {bis_result.error_message or 'Error desconocido'}. "
-                    f"Newton-Raphson: {nwt_result.error_message or 'Error desconocido'}."
-                )
+                error_msg = result.error_message or "Error de compilación en la expresión."
+            else:
+                presenter_data = present_comparison_result(result)
+                bis_ok = result.bisection.status == "success"
+                nwt_ok = result.newton.status == "success"
+
+                # Clear stale warning keys from previous comparison runs
+                st.session_state.pop("err_bis", None)
+                st.session_state.pop("err_nwt", None)
+
+                if bis_ok and nwt_ok:
+                    st.session_state.update(presenter_data["session"])
+                elif bis_ok and not nwt_ok:
+                    st.session_state.update(presenter_data["session"])
+                    st.session_state["err_nwt"] = result.newton.error_message or "Error desconocido"
+                elif not bis_ok and nwt_ok:
+                    st.session_state.update(presenter_data["session"])
+                    st.session_state["err_bis"] = result.bisection.error_message or "Error desconocido"
+                else:
+                    _clear_failed_run_state()
+                    error_msg = (
+                        "Comparación: ambos métodos fallaron. "
+                        f"Bisección: {result.bisection.error_message or 'Error desconocido'}. "
+                        f"Newton-Raphson: {result.newton.error_message or 'Error desconocido'}."
+                    )
 
     except ValueError as e:
         _clear_failed_run_state()
@@ -651,11 +655,14 @@ if st.session_state["metodo_activo"] == "Comparación":
         col_g, col_t = st.columns([3, 2])
         with col_g:
             if bis_has_data and nwt_has_data:
-                fig = graficar_comparacion(iters_bis, iters_nwt)
+                vm = build_comparison_chart_vm(iters_bis, iters_nwt)
+                fig = graficar_comparacion_vm(vm)
             elif bis_has_data:
-                fig = graficar_convergencia(iters_bis, metodo="Bisección")
+                vm = build_convergence_chart_vm(iters_bis, metodo="Bisección")
+                fig = graficar_convergencia_vm(vm)
             else:
-                fig = graficar_convergencia(iters_nwt, metodo="Newton-Raphson")
+                vm = build_convergence_chart_vm(iters_nwt, metodo="Newton-Raphson")
+                fig = graficar_convergencia_vm(vm)
             st.pyplot(fig)
             plt.close(fig)
 
@@ -721,6 +728,11 @@ if n_iters == 0 and convergio:
         <div class="value" style="font-size:1rem;margin-top:6px">{badge}</div></div>""",
         unsafe_allow_html=True)
     st.success("La raíz exacta se encuentra en el límite del intervalo. No se requirieron iteraciones.")
+    st.stop()
+
+if n_iters == 0:
+    st.warning("No hay iteraciones disponibles para mostrar. Ejecuta nuevamente el método.")
+    st.session_state["ejecutado"] = False
     st.stop()
 
 # ── Métricas superiores ───────────────────────
@@ -816,9 +828,11 @@ with tab_grafica:
     with col_chart:
         iter_info = iteraciones[iter_actual]
         if metodo_activo == "Bisección":
-            fig = graficar_iteracion_biseccion(f, iter_info)
+            vm = build_bisection_chart_vm(f, iter_info)
+            fig = graficar_iteracion_biseccion_vm(vm)
         else:
-            fig = graficar_iteracion_newton(f, iter_info)
+            vm = build_newton_chart_vm(f, iter_info)
+            fig = graficar_iteracion_newton_vm(vm)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
 
@@ -897,7 +911,8 @@ with tab_convergencia:
     col_cv, col_fx = st.columns(2)
 
     with col_cv:
-        fig_conv = graficar_convergencia(iteraciones, metodo=metodo_activo)
+        vm_conv = build_convergence_chart_vm(iteraciones, metodo=metodo_activo)
+        fig_conv = graficar_convergencia_vm(vm_conv)
         st.pyplot(fig_conv, use_container_width=True)
         plt.close(fig_conv)
 
@@ -907,9 +922,11 @@ with tab_convergencia:
         primer_x = iteraciones[0]["a"] if metodo_activo == "Bisección" else iteraciones[0]["x_anterior"]
         ultimo_x = iteraciones[-1][x_key]
         pad = max(abs(ultimo_x - primer_x) * 0.8, 1.0)
-        fig_fn = graficar_funcion(f, ultimo_x - pad, ultimo_x + pad,
-                                  titulo=f"f(x) con raíz ≈ {fmt(raiz, 5)}",
-                                  raiz=raiz)
+        vm_fn = build_function_chart_vm(
+            f, ultimo_x - pad, ultimo_x + pad, raiz,
+            titulo=f"f(x) con raíz ≈ {fmt(raiz, 5)}",
+        )
+        fig_fn = graficar_funcion_vm(vm_fn)
         st.pyplot(fig_fn, use_container_width=True)
         plt.close(fig_fn)
 
