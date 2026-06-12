@@ -12,12 +12,12 @@ from matplotlib.lines import Line2D
 import numpy as np
 import sympy as sp
 
-from utils.func_parser import compile_expression, compile_with_derivative
 from domain.models.bisection import BisectionRequest
 from domain.models.newton import NewtonRequest
 from domain.models.comparison import ComparisonRequest
-from domain.solvers.bisection import solve_bisection
-from domain.solvers.newton import solve_newton
+from application.services.parser_service import ParserService
+from application.services.bisection_solver import BisectionSolver
+from application.services.newton_solver import NewtonSolver
 from application.use_cases.run_bisection import run_bisection
 from application.use_cases.run_newton import run_newton
 from application.use_cases.run_comparison import run_comparison
@@ -444,15 +444,13 @@ if ejecutar:
                 tolerance=tol,
                 max_iterations=int(max_iter),
             )
-            result = run_bisection(
-                request,
-                compile_fn=compile_expression,
-                solve_fn=solve_bisection,
-            )
+            parser = ParserService()
+            bisection_solver = BisectionSolver()
+            result = run_bisection(request, parser, bisection_solver)
             presenter_data = present_bisection_result(result)
 
             if result.status == "success":
-                evaluator = compile_expression(st.session_state["fn_texto"])
+                evaluator = ParserService().compile_expression(st.session_state["fn_texto"])
                 st.session_state["f"]    = evaluator
                 st.session_state["df"]   = None
                 st.session_state["expr"] = sp.sympify(st.session_state["fn_texto"])
@@ -479,16 +477,13 @@ if ejecutar:
                 tolerance=tol,
                 max_iterations=int(max_iter),
             )
-            result = run_newton(
-                request,
-                compile_fn=compile_expression,
-                derive_fn=lambda expr: compile_with_derivative(expr)[1],
-                solve_fn=solve_newton,
-            )
+            parser = ParserService()
+            newton_solver = NewtonSolver()
+            result = run_newton(request, parser, newton_solver)
             presenter_data = present_newton_result(result)
 
             if result.status == "success":
-                f, df = compile_with_derivative(st.session_state["fn_texto"])
+                f, df = ParserService().compile_with_derivative(st.session_state["fn_texto"])
                 st.session_state["f"]    = f
                 st.session_state["df"]   = df
                 st.session_state["expr"] = sp.sympify(st.session_state["fn_texto"])
@@ -504,8 +499,7 @@ if ejecutar:
                 error_msg = result.error_message or "Newton-Raphson falló."
 
         elif metodo == "Comparación":
-            # Compilar una vez — f/df se guardan para los renderizadores de gráficos
-            f, df = compile_with_derivative(st.session_state["fn_texto"])
+            f, df = ParserService().compile_with_derivative(st.session_state["fn_texto"])
             st.session_state["f"]  = f
             st.session_state["df"] = df
 
@@ -520,12 +514,9 @@ if ejecutar:
 
             result = run_comparison(
                 request,
-                compile_fn=compile_expression,
-                derive_fn=lambda expr: compile_with_derivative(expr)[1],
-                run_bisection_fn=run_bisection,
-                run_newton_fn=run_newton,
-                bisection_solve_fn=solve_bisection,
-                newton_solve_fn=solve_newton,
+                parser=ParserService(),
+                bisection_solver=BisectionSolver(),
+                newton_solver=NewtonSolver(),
             )
 
             if result.status == "parse_error":

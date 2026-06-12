@@ -1,8 +1,4 @@
-# application/use_cases/run_comparison.py
-
 """Caso de uso de comparación que orquesta bisección y Newton en paralelo."""
-
-from typing import Callable
 
 from domain.models.bisection import (
     BisectionRequest,
@@ -19,13 +15,17 @@ from domain.models.comparison import (
     MethodSummary,
     ComparisonResult,
 )
+from application.use_cases.run_bisection import run_bisection
+from application.use_cases.run_newton import run_newton
+from application.services.parser_service import ParserService
+from application.services.bisection_solver import BisectionSolver
+from application.services.newton_solver import NewtonSolver
 
 
 def _summarise(
     name: str,
     result: BisectionResult | NewtonResult,
 ) -> MethodSummary:
-    """Envuelve un resultado tipificado del solver en un *MethodSummary* normalizado."""
     final_error = (
         result.iterations[-1].error_abs
         if result.iterations and result.status == "success"
@@ -44,35 +44,10 @@ def _summarise(
 
 def run_comparison(
     request: ComparisonRequest,
-    compile_fn: Callable[[str], Callable[[float], float]],
-    derive_fn: Callable[[str], Callable[[float], float]],
-    run_bisection_fn: Callable[
-        [BisectionRequest, Callable, Callable],
-        BisectionResult,
-    ],
-    run_newton_fn: Callable[
-        [NewtonRequest, Callable, Callable, Callable],
-        NewtonResult,
-    ],
-    bisection_solve_fn: Callable[
-        [Callable[[float], float], SolverConfig],
-        BisectionResult,
-    ],
-    newton_solve_fn: Callable[
-        [Callable[[float], float], Callable[[float], float], NewtonConfig],
-        NewtonResult,
-    ],
+    parser: ParserService,
+    bisection_solver: BisectionSolver,
+    newton_solver: NewtonSolver,
 ) -> ComparisonResult:
-    """Orquesta una ejecución de comparación.
-
-    1. Ejecuta bisección y Newton a través de sus casos de uso (no los solvers directamente).
-    2. Envuelve cada resultado en un ``MethodSummary`` normalizado.
-    3. Retorna el ``ComparisonResult`` combinado.
-
-    Los argumentos callable hacen que el caso de uso sea testeable con fakes para
-    cada colaborador (compile, derive, use-case y solver).
-    """
-    # Construir solicitudes hijas
     bisection_request = BisectionRequest(
         expression=request.expression,
         a=request.bisection_a,
@@ -87,15 +62,13 @@ def run_comparison(
         max_iterations=request.max_iterations,
     )
 
-    # Ejecutar ambos métodos — cada caso de uso hijo maneja su propia compilación
-    bisection_result = run_bisection_fn(
-        bisection_request, compile_fn, bisection_solve_fn,
+    bisection_result = run_bisection(
+        bisection_request, parser, bisection_solver,
     )
-    newton_result = run_newton_fn(
-        newton_request, compile_fn, derive_fn, newton_solve_fn,
+    newton_result = run_newton(
+        newton_request, parser, newton_solver,
     )
 
-    # Resumir y retornar
     overall_status = "success"
     error_message = None
     if bisection_result.status == "parse_error" and newton_result.status == "parse_error":

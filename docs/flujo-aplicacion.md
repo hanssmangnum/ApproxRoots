@@ -46,9 +46,9 @@ app.py (sidebar)
 BisectionRequest(expression, a, b, tolerance, max_iter)
   │
   ▼
-run_bisection(request, compile_fn=compile_expression, solve_fn=solve_bisection)
+run_bisection(request, parser=ParserService(), solver=BisectionSolver())
   │
-  ├── compile_expression(texto) → evaluador callable (float → float)
+  ├── parser.compile_expression(texto) → evaluador callable (float → float)
   │     Si falla → BisectionResult(status="parse_error")
   │
   └── solve_bisection(evaluator, SolverConfig(a, b, tol, max_iter))
@@ -80,10 +80,10 @@ app.py (sidebar)
 NewtonRequest(expression, x0, tolerance, max_iter)
   │
   ▼
-run_newton(request, compile_fn=compile_expression, derive_fn=compile_with_derivative, solve_fn=solve_newton)
+run_newton(request, parser=ParserService(), solver=NewtonSolver())
   │
-  ├── compile_expression(texto) → evaluador f
-  ├── compile_with_derivative(texto)[1] → evaluador df
+  ├── parser.compile_expression(texto) → evaluador f
+  ├── parser.compile_derivative(texto) → evaluador df
   │     Si falla → NewtonResult(status="parse_error")
   │
   └── solve_newton(f, df, NewtonConfig(x0, tol, max_iter))

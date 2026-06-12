@@ -23,7 +23,7 @@ def present_bisection_result(
     """Convierte un *BisectionResult* del dominio en datos compatibles con Streamlit.
 
     Retorna un dict con las claves:
-      - ``iterations`` – lista de dicts que coincide con el formato legacy de ``metodos/biseccion.py``
+      - ``iterations`` – lista de dicts con el formato
         (``iteracion``, ``a``, ``b``, ``xm``, ``f(xm)``, ``error_abs``, ``error_rel``).
       - ``metrics`` – dict con ``root``, ``f_root``, ``iterations_count``, ``final_error``.
       - ``session`` – dict que puede volcarse en ``st.session_state``

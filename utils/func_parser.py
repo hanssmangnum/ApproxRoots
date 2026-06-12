@@ -22,10 +22,7 @@ def parsear_funcion(texto: str):
 
 
 def validar_evaluacion(f, valor: float, nombre: str = "x"):
-    """Evalúa *f* en *valor* y valida que el resultado sea finito.
-
-    Se conserva para compatibilidad legacy (metodos/biseccion.py).
-    """
+    """Evalúa *f* en *valor* y valida que el resultado sea finito."""
     try:
         resultado = float(f(valor))
     except Exception:

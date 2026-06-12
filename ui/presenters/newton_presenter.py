@@ -23,7 +23,7 @@ def present_newton_result(
     """Convierte un *NewtonResult* del dominio en datos compatibles con Streamlit.
 
     Retorna un dict con las claves:
-      - ``iterations`` – lista de dicts que coincide con el formato legacy de ``metodos/newton.py``
+      - ``iterations`` – lista de dicts con el formato
         (``iteracion``, ``x_anterior``, ``x_nuevo``, ``f(x)``, ``f'(x)``,
          ``error_abs``, ``error_rel``, ``tangente``).
       - ``metrics`` – dict con ``root``, ``iterations_count``, ``final_error``, ``converged``.

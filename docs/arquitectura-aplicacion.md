@@ -43,7 +43,7 @@ Dataclasses congeladas que definen los contratos entre capas. No contienen lógi
 - `NewtonRequest`, `NewtonConfig`, `NewtonIteration`, `NewtonResult`
 - `ComparisonRequest`, `MethodSummary`, `ComparisonResult`
 
-Regla: no importan nada de `application/`, `ui/` ni `metodos/`.
+Regla: no importan nada de `application/` ni `ui/`.
 
 ### 2. Solvers (`domain/solvers/`)
 
@@ -54,13 +54,17 @@ Algoritmos numéricos **puros**. Reciben un evaluador de función (callable) y c
 
 Regla: no importan `streamlit`, `matplotlib`, `pandas` ni el parser. Se verifica en tests.
 
-### 3. Parser (`utils/func_parser.py`)
+### 3. Parser — `utils/func_parser.py` y `application/services/parser_service.py`
 
-Compila la expresión del usuario en callables numéricos usando SymPy. No sabe nada de métodos numéricos.
+`ParserService` (en `application/services/`) envuelve las funciones de `utils/func_parser.py` para que los casos de uso colaboren con objetos, no con callables sueltos.
 
-- `compile_expression(texto)` → `callable float → float` (para bisección)
-- `compile_with_derivative(texto)` → `(f_callable, df_callable)` (para Newton)
-- `parsear_funcion(texto)` — API legacy que retorna tupla completa
+| Función | Responsabilidad |
+|---|---|
+| `ParserService.compile_expression(texto)` | `callable float → float` (para bisección) |
+| `ParserService.compile_with_derivative(texto)` | `(f_callable, df_callable)` (para Newton) |
+| `ParserService.compile_derivative(texto)` | Solo la derivada como callable |
+
+Las funciones base en `utils/func_parser.py` (`compile_expression`, `compile_with_derivative`, `parsear_funcion`) se conservan como implementación concreta, pero toda la app nueva pasa por `ParserService`.
 
 Regla: no valida intervalos, signos ni convergencia. Eso es trabajo del solver.
 
@@ -68,21 +72,11 @@ Regla: no valida intervalos, signos ni convergencia. Eso es trabajo del solver.
 
 Coordinan el flujo: reciben un request, llaman al parser, llaman al solver, devuelven el resultado. No contienen lógica de negocio ni de presentación.
 
-- `run_bisection(request, compile_fn, solve_fn)`
-- `run_newton(request, compile_fn, derive_fn, solve_fn)`
-- `run_comparison(`
-  `request, compile_fn, derive_fn, run_bisection_fn, run_newton_fn, bisection_solve_fn, newton_solve_fn` `)`
+- `run_bisection(request, parser, solver)`
+- `run_newton(request, parser, solver)`
+- `run_comparison(request, parser, bisection_solver, newton_solver)`
 
-Aceptan las funciones colaboradoras como parámetros para poder probarse con fakes.
-
-En el caso de `run_comparison`, eso significa que el caso de uso recibe explícitamente:
-
-- el compilador de función,
-- el compilador de derivada,
-- el caso de uso de bisección,
-- el caso de uso de Newton,
-- el solver de bisección,
-- y el solver de Newton.
+Colaboran con objetos de servicio (`ParserService`, `BisectionSolver`, `NewtonSolver`) en lugar de callables sueltos. Para pruebas se parchean los métodos de los servicios con `unittest.mock`.
 
 Nota importante: en la app actual, el modo **Comparación** todavía arma la vista final ejecutando `run_bisection` y `run_newton` por separado para conservar todas las iteraciones, tablas y métricas. `run_comparison` ya existe como contrato de arquitectura y como base de evolución, pero no es todavía la única ruta activa de render.
 
@@ -121,28 +115,32 @@ Nota importante: esta capa ya tiene soporte para view-models, pero `app.py` toda
 
 Orquesta todo: recibe datos del usuario, construye requests, llama a casos de uso, usa presenters, renderiza con Streamlit + matplotlib. Es la única capa que conoce Streamlit.
 
-### 10. Wrappers legacy (`metodos/`)
+### 10. Capa de servicios (`application/services/`)
 
-Puente de compatibilidad que envuelve los nuevos solvers para conservar compatibilidad con pruebas, utilidades heredadas y posibles flujos antiguos.
+Servicios ligeros que envuelven las implementaciones concretas de parser y solvers para que los casos de uso colaboren con objetos en lugar de callables.
 
-- `biseccion(f, a, b, tol, max_iter)` → tupla `(iters, root, converged)`
-- `newton_raphson(f, df, x0, tol, max_iter)` → tupla `(iters, root, converged)`
-
-En la app actual, la ruta principal ya intenta apoyarse en casos de uso y presenters. Los wrappers quedan como compatibilidad, no como ruta principal ideal.
+- `ParserService` — envuelve `compile_expression`, `compile_with_derivative`
+- `BisectionSolver` — envuelve `solve_bisection`
+- `NewtonSolver` — envuelve `solve_newton`
 
 ## Reglas de dependencia
 
 ```
 app.py
-  → application/use_cases/
+  → application/use_cases/       (vía objetos de servicio)
+  → application/services/        (ParserService, *Solver)
   → domain/models/
   → ui/presenters/
   → utils/
-  → metodos/ (legacy)
 
 application/use_cases/
   → domain/models/
-  → utils/ (inyectado como callable)
+  → application/services/        (ParserService, *Solver)
+
+application/services/
+  → domain/models/
+  → domain/solvers/
+  → utils/func_parser.py
 
 domain/solvers/
   → domain/models/

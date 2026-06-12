@@ -31,9 +31,6 @@ approxroots/
 ├── utils/
 │   ├── func_parser.py              ← Compilación de expresiones (SymPy)
 │   └── graficas.py                 ← Renderizado matplotlib
-├── metodos/
-│   ├── biseccion.py                ← Wrapper legacy de bisección
-│   └── newton.py                   ← Wrapper legacy de Newton-Raphson
 └── tests/
     ├── test_solver.py              ← Pruebas de solvers
     ├── test_use_case.py            ← Pruebas de casos de uso
@@ -115,9 +112,9 @@ Coordina el flujo de bisección: compila la expresión, luego ejecuta el solver.
 
 | Función | Responsabilidad |
 |---|---|
-| `run_bisection(request, compile_fn, solve_fn)` | 1) Compila con `compile_fn`. Si falla → `parse_error`. 2) Construye `SolverConfig`. 3) Llama a `solve_fn`. 4) Retorna `BisectionResult`. |
+| `run_bisection(request, parser, solver)` | Delega el compilado en `parser.compile_expression`. Si falla → `parse_error`. Si compila bien, delega en `solver.solve`. Retorna `BisectionResult`. |
 
-Acepta `compile_fn` y `solve_fn` como parámetros para testear con fakes.
+Usa `ParserService` y `BisectionSolver` como colaboradores.
 
 ---
 
@@ -127,7 +124,7 @@ Coordina el flujo de Newton-Raphson.
 
 | Función | Responsabilidad |
 |---|---|
-| `run_newton(request, compile_fn, derive_fn, solve_fn)` | 1) Compila función. 2) Compila derivada. 3) Construye `NewtonConfig`. 4) Llama a `solve_fn`. 5) Retorna `NewtonResult`. |
+| `run_newton(request, parser, solver)` | Delega en `parser.compile_expression` y `parser.compile_derivative`. Si falla → `parse_error`. Si compila, delega en `solver.solve`. Retorna `NewtonResult`. |
 
 ---
 
@@ -137,7 +134,7 @@ Coordina la ejecución de ambos métodos de forma secuencial dentro de una misma
 
 | Función | Responsabilidad |
 |---|---|
-| `run_comparison(request, ...)` | Recibe un `ComparisonRequest` con `bisection_a`, `bisection_b` y `newton_x0`, construye `BisectionRequest` y `NewtonRequest`, ejecuta ambos casos de uso, envuelve resultados en `MethodSummary`, retorna `ComparisonResult`. Hoy funciona como capa disponible de orquestación, pero `app.py` todavía compone `run_bisection` y `run_newton` directamente para renderizar comparación con todo el detalle de iteraciones. |
+| `run_comparison(request, parser, bisection_solver, newton_solver)` | Recibe un `ComparisonRequest` con `bisection_a`, `bisection_b` y `newton_x0`, construye `BisectionRequest` y `NewtonRequest`, ejecuta ambos casos de uso via `run_bisection` y `run_newton`, envuelve resultados en `MethodSummary`, retorna `ComparisonResult`. |
 
 ---
 
@@ -247,12 +244,6 @@ Importante: aunque `app.py` quedó bastante más fino que antes, sigue siendo el
 
 ---
 
-## `metodos/biseccion.py` y `metodos/newton.py`
-
-Wrappers legacy que envuelven los solvers nuevos para compatibilidad.
-
-Convierten resultados tipificados a la antigua firma `(list[dict], root, converged)`. Hoy sirven sobre todo para compatibilidad y pruebas, no como la ruta principal deseada de la UI.
-
 ---
 
 ## Pruebas (`tests/`)
@@ -264,7 +255,7 @@ Convierten resultados tipificados a la antigua firma `(list[dict], root, converg
 | `test_presenter.py` | Presenters: mapeo de claves legacy, métricas, payload de sesión, resultados vacíos. |
 | `test_parser.py` | Parser: expresiones válidas, sintaxis inválida, variable no permitida. |
 | `test_app_session.py` | Helpers de sesión de app.py: `_apply_comparison_session`, `_clear_failed_run_state`. |
-| `e2e_smoke.py` | Flujo completo real: parse → solve → presenter → wrapper legacy. |
+| `e2e_smoke.py` | Flujo completo real: parse → solve → presenter. |
 
 ---
 
@@ -299,14 +290,19 @@ app.py renderiza con:
 ```
 app.py
   → application/use_cases/
+  → application/services/
   → domain/models/
   → ui/presenters/
   → utils/
-  → metodos/ (legacy)
 
 application/use_cases/
   → domain/models/
-  → utils/ (solo compile_fn/derive_fn, inyectadas)
+  → application/services/        (ParserService, *Solver)
+
+application/services/
+  → domain/models/
+  → domain/solvers/
+  → utils/func_parser.py
 
 domain/solvers/
   → domain/models/
